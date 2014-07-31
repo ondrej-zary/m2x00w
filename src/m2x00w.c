@@ -26,6 +26,7 @@
 #include <libgen.h>
 
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 #define cpu_to_le16(x) (x)
 #define cpu_to_le32(x) (x)
@@ -238,14 +239,16 @@ struct media
     char desc[32];
 };
 
-struct media med[7] = {
-/* 0*/ {"Normal (HQ)"},
-/* 1*/ {"Karton"},
-/* 2*/ {"Folie"},
-/* 3*/ {"Kuvert"},
-/* 4*/ {"Briefkopf"},
-/* 5*/ {"Postkarte"},
-/* 6*/ {"Etikette"},
+struct media med[] = {
+/* 0*/ {"Plain"},
+/* 1*/ {"Thick"},
+/* 2*/ {"Transparency"},
+/* 3*/ {"Envelope"},
+/* 4*/ {"Letterhead"},
+/* 5*/ {"Postcard"},
+/* 6*/ {"Label"},
+/* 7*/ {""},
+/* 8*/ {"Glossy"},
 };
 
 struct steuerFelder
@@ -305,8 +308,9 @@ Help (void)
 	     "                        1 - Black and White\n"
 	     "                        2 - Color\n"
 	     "-m media          Media code:  [%d]\n", MediaCode);
-    for (ho = 0; ho < 6; ho++) {
-	fprintf (stderr,
+    for (ho = 0; ho < ARRAY_SIZE(med); ho++) {
+        if (strlen(med[ho].desc) > 0)
+	    fprintf (stderr,
 		 "                       %2d - %s\n", ho, med[ho].desc);
     }
     fprintf (stderr, "-p paper          Paper code:  [%d]\n", PaperCode);
@@ -1015,7 +1019,7 @@ main (int argc, char *argv[])
 	    break;
 	case 'm':
 	    MediaCode = atoi (optarg);
-	    if (MediaCode > 6) {
+	    if (MediaCode > 8 || MediaCode == 7) {
 		DBG(0, "Wrong Media Code %d\n", MediaCode);
 		exit (1);
 	    }
