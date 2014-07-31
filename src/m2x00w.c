@@ -98,7 +98,7 @@ struct block_params {
 
 struct block_startpage {
     unsigned char color;
-    unsigned char one;		/* 0x01 */
+    unsigned char copies;	/* number of copies */
     unsigned short x_start;
     unsigned short x_end;
     unsigned short y_start;
@@ -596,7 +596,7 @@ writePageHeader (void)
 {
     struct block_startpage page = {
 	.color = thisPageColorMode,
-	.one = 0x01,
+	.copies = 1,
 	.x_end = cpu_to_le16(resBreite),
 	.y_end = cpu_to_le16(resHoehe),
 	.blocks1 = thisPageBlocksPerPage,
