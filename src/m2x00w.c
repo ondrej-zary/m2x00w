@@ -60,7 +60,7 @@ unsigned int resHoehe;
 int jobHeaderWritten = 0;
 int headerCount = 0;		/* zaehler fuer alle header */
 int siteInitHeaderCount = 0;	/* zaehler fuer alle header */
-int page_block_seq;   /* saved sequence number for startpage block */
+int page_block_seq;   /* saved sequence number for page block */
 
 long pix[4] = { 0, 0, 0, 0 };	/* pixel counter (C,M,Y,K) */
 
@@ -78,9 +78,9 @@ struct header {
 
 #define M2X00W_BLOCK_BEGIN	0x40
 #define M2X00W_BLOCK_PARAMS	0x50
-#define M2X00W_BLOCK_STARTPAGE	0x51
+#define M2X00W_BLOCK_PAGE	0x51
 #define M2X00W_BLOCK_DATA	0x52
-#define M2X00W_BLOCK_ENDPAGE	0x55
+#define M2X00W_BLOCK_ENDPART	0x55
 #define M2X00W_BLOCK_END	0x41
 
 struct block_begin {
@@ -97,7 +97,7 @@ struct block_params {
     unsigned char zeros[3];
 } __attribute__((packed));
 
-struct block_startpage {
+struct block_page {
     unsigned char color;	/* 0xF0 = color, 0x80 = BW (2400W/2500W), 0x00 = BW (2300W) */
     unsigned char copies;	/* number of copies (only 2500W, always 01 for 2300W/2400W) */
     unsigned short x_start;
@@ -123,6 +123,10 @@ struct block_data {
     unsigned char color;	/* 00=K, 01=C, 02=M, 03=Y */
     unsigned char block_cnt;
     unsigned short lines;	/* lines per block */
+} __attribute__((packed));
+
+struct block_endpart {
+    unsigned char type;		/* 00=end job 10=wait for button (manual duplex) */
 } __attribute__((packed));
 
 struct format
@@ -651,7 +655,7 @@ writeJobHeader (void)
 void
 writePageHeader (void)
 {
-    struct block_startpage page = {
+    struct block_page page = {
 	.color = thisPageColorMode,
 	.copies = 1,
 	.x_end = cpu_to_le16(resBreite),
@@ -665,7 +669,7 @@ writePageHeader (void)
     int tmp = headerCount;
 
     headerCount = page_block_seq;
-    write_block(M2X00W_BLOCK_STARTPAGE, &page, sizeof(page), out_stream, NULL);
+    write_block(M2X00W_BLOCK_PAGE, &page, sizeof(page), out_stream, NULL);
     headerCount = tmp;
     hex_dump(4, "Seitenheader: ", &page, sizeof(page));
 }
@@ -1197,9 +1201,10 @@ main (int argc, char *argv[])
     /* readBit(); */
 
     if (jobHeaderWritten == 1) {
+        struct block_endpart endpart = { };
 	unsigned char zero = 0;
 
-	write_block(M2X00W_BLOCK_ENDPAGE, &zero, sizeof(zero), out_stream, NULL);///// BUG?
+	write_block(M2X00W_BLOCK_ENDPART, &endpart, sizeof(endpart), out_stream, NULL);
 	write_block(M2X00W_BLOCK_END, &zero, sizeof(zero), out_stream, NULL);
 	DBG(1, "JobFooter written.\n");
     }
