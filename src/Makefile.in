@@ -40,7 +40,7 @@ m2x00w: m2x00w.c
 
 install: all $(PROGS)
 	chmod 755 m2300w-wrapper
-	rm -f $(BINDIR)/m2300w $(BINDIR)/m2400w $(BINDIR)/m2x00w $(BINDIR)/m2300w_wrapper
+	rm -f $(BINDIR)/m2300w $(BINDIR)/m2400w $(BINDIR)/m2500w $(BINDIR)/m2x00w $(BINDIR)/m2300w_wrapper
 	$(INSTALL) -d -m 755 $(BINDIR)
 	$(INSTALL) -d -m 755 $(SHARE)
 	for P in $(PROGS) ; do \
@@ -48,6 +48,7 @@ install: all $(PROGS)
 	done
 	ln -s m2x00w $(BINDIR)/m2300w
 	ln -s m2x00w $(BINDIR)/m2400w
+	ln -s m2x00w $(BINDIR)/m2500w
 
 clean:
 	rm -f m2x00w

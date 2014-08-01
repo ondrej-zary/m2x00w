@@ -36,7 +36,7 @@ int verb = 0;			/* verbose level */
 
 #define DBG(level, fmt, args ...)	if (verb > level) fprintf(stderr, fmt, ##args);
 
-enum m2x00w_model { M2300W = 0x82, M2400W = 0x85 };
+enum m2x00w_model { M2300W = 0x82, M2400W = 0x85, M2500W = 0x87 };
 enum m2x00w_model model;
 int MediaCode = 0;
 int PaperCode = 4;
@@ -252,6 +252,7 @@ struct steuerFelder
 {
     unsigned int bytesIn;
     unsigned int linesOut;
+    unsigned int curLinePos;
     unsigned int blocksOut;
 
     unsigned char *encBuffer;
@@ -273,10 +274,10 @@ struct steuerFelder
 
 
 struct steuerFelder stFeld[4] = {
-    {0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0},
-    {0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0},
-    {0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0},
-    {0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0}
+    {0, 0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0},
+    {0, 0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0},
+    {0, 0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0},
+    {0, 0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0}
 };
 
 void (*encode)(int inByte, int colorID, struct steuerFelder *stFeld);
@@ -451,6 +452,7 @@ doEncode (int inByte, int colorID, struct steuerFelder *stFeld)
 {
     if (stFeld->bytesIn == 0) {
 	stFeld->linesOut++;
+	stFeld->curLinePos = stFeld->indexBlockBuffer;
 	/* table compression not implemented: write an empty table */
 	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 0x80;
     }
@@ -489,6 +491,24 @@ doEncode (int inByte, int colorID, struct steuerFelder *stFeld)
 	encodeToBlockBuffer (colorID, stFeld);
 	stFeld->bytesIn = 0;
 	stFeld->rleCount = 0;
+	if (model == M2500W) {
+            int rowbytes = stFeld->indexBlockBuffer - stFeld->curLinePos;
+	    char pad_header[2];
+	    /* compute padding length for the row length to be multiple of 4 */
+            char padlen = (4 - ((rowbytes + sizeof(pad_header)) % 4)) % 4;
+            char padding[] = { 0xff, 0xff, 0xff };
+            int rowlen = rowbytes + sizeof(pad_header) + padlen;
+
+            pad_header[0] = (padlen << 6) | ((rowlen >> 8) & 0x3f);
+            pad_header[1] = rowlen & 0xff;
+	    /* make space for pad_header and padding */
+	    memmove(stFeld->blockBuffer + stFeld->curLinePos + 1 + sizeof(pad_header) + padlen, stFeld->blockBuffer + stFeld->curLinePos + 1, rowbytes);
+	    /* insert pad_header and padding */
+	    memcpy(stFeld->blockBuffer + stFeld->curLinePos + 1, pad_header, sizeof(pad_header));
+	    memcpy(stFeld->blockBuffer + stFeld->curLinePos + 1 + sizeof(pad_header), padding, padlen);
+	    stFeld->blockBuffer[stFeld->curLinePos] |= 0x40;
+	    stFeld->indexBlockBuffer += sizeof(pad_header) + padlen;
+	}
 	/* wenn die anzahl der zeilen f|r einen block erreicht ist muss der blockheader generiert werden */
 	/* dies kann erst jetzt geschehen, da die anzahl der im block befindlichen bytes im header steht */
 	if (stFeld->linesOut >= (linesPerBlock / (model == M2400W ? 2 : 1))) {
@@ -954,6 +974,13 @@ main (int argc, char *argv[])
         form = form_2400;
         encode = prepDoEncode;
         res_x = RES_MULT2;
+    } else if (!strcmp(prog_name, "m2500w")) {
+        model = M2500W;
+        form = form_2400;
+        encode = doEncode;
+    } else {
+        fprintf(stderr, "m2x00w must be executed as m2300w, m2400w or m2500w\n");
+        return 1;
     }
 
 /* 1. parameter lesen */
