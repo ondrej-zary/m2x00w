@@ -27,6 +27,7 @@
 #include <libgen.h>
 
 #define cpu_to_le16(x) (x)
+#define cpu_to_le32(x) (x)
 
 FILE *in_stream, *out_stream;
 
@@ -112,6 +113,13 @@ struct block_startpage {
     unsigned char zero3;
     unsigned char unknown;	/* 01 for M2300W, else 00 */
     unsigned char zeros2[3];
+} __attribute__((packed));
+
+struct block_data {
+    unsigned int data_len;
+    unsigned char color;	/* 00=K, 01=C, 02=M, 03=Y */
+    unsigned char block_cnt;
+    unsigned short lines;	/* lines per block */
 } __attribute__((packed));
 
 struct format
@@ -239,33 +247,6 @@ struct media med[7] = {
 /* 6*/ {"Etikette"},
 };
 
-struct
-{
-    unsigned char blockHeaderT1[2];
-    unsigned char headerCount;
-    /* headerzaehler 0x?? */
-    unsigned char blockHeaderT2[3];
-    unsigned char blockLength1;
-    unsigned char blockLength2;
-    unsigned char blockLength3;
-    unsigned char blockLength4;
-    /* laenge des blocks in byte 0x??,0x??,0x??,0x?? */
-    unsigned char tonerColor;
-    unsigned char blockCount;
-    /* bblockzaehler 0x?? */
-    unsigned char linesPerBlock1;
-    unsigned char linesPerBlock2;
-    unsigned char prSum;
-    /* pruefsumme 0x?? */
-}
-blockHeader =
-{
-    { 0x1B, 0x52},
-    0x03,
-    { 0x08, 0x00, 0xAD},
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x53, 0x03, 0x00
-};
-
 struct steuerFelder
 {
     unsigned int bytesIn;
@@ -380,7 +361,7 @@ void hex_dump(int level, char *title, void *p, int length)
     }
 }
 
-void write_block(unsigned char block_type, void *data, unsigned char data_len, FILE *stream)
+void write_block(unsigned char block_type, void *data, unsigned char data_len, FILE *stream, void *out)
 {
     struct header header;
     unsigned char sum;
@@ -390,11 +371,19 @@ void write_block(unsigned char block_type, void *data, unsigned char data_len, F
     header.seq = headerCount++;
     header.len = cpu_to_le16(data_len);
     header.type_inv = block_type ^ 0xff;
-    fwrite(&header, 1, sizeof(header), stream);
-    fwrite(data, 1, data_len, stream);
-
     sum = checksum(&header, sizeof(header)) + checksum(data, data_len);
-    fwrite(&sum, 1, sizeof(sum), stream);
+
+    if (stream) {
+	fwrite(&header, 1, sizeof(header), stream);
+	fwrite(data, 1, data_len, stream);
+	fwrite(&sum, 1, sizeof(sum), stream);
+    } else if (out) {
+	memcpy(out, &header, sizeof(header));
+	out += sizeof(header);
+	memcpy(out, data, data_len);
+	out += data_len;
+	memcpy(out, &sum, sizeof(sum));
+    }
 }
 
 void
@@ -545,41 +534,28 @@ doEncode (int inByte, int colorID)
 	/* wenn die anzahl der zeilen f|r einen block erreicht ist muss der blockheader generiert werden */
 	/* dies kann erst jetzt geschehen, da die anzahl der im block befindlichen bytes im header steht */
 	if (stFeld[colorID].linesOut >= (linesPerBlock / (model == M2400W ? 2 : 1))) {
-	    stFeld[colorID].blocksOut++;
+	    int tmp = headerCount;
+	    struct block_data header = {
+		.data_len = cpu_to_le32(stFeld[colorID].indexBlockBuffer),
+		.color = colorID,
+		.block_cnt = ++stFeld[colorID].blocksOut,
+		.lines = cpu_to_le16(linesPerBlock),
+	    };
 	    DBG(4, "Blockheader fuer Block %i mit %5i Bytes generieren und Block raus kopieren...\n",
 			 (int) stFeld[colorID].blocksOut, (int) stFeld[colorID].indexBlockBuffer);
-	    blockHeader.blockLength1 =
-		(char) stFeld[colorID].indexBlockBuffer;
-	    blockHeader.blockLength2 =
-		(char) (stFeld[colorID].indexBlockBuffer >> 8);
-	    blockHeader.blockLength3 =
-		(char) (stFeld[colorID].indexBlockBuffer >> 16);
-	    blockHeader.blockLength4 =
-		(char) (stFeld[colorID].indexBlockBuffer >> 24);
-	    blockHeader.linesPerBlock1 = (char) (linesPerBlock);
-	    blockHeader.linesPerBlock2 = (char) (linesPerBlock >> 8);
 	    /* die berechnung der headerCount muss sicherstellen das die reichenfolge stimmt */
 	    if (thisPageColorMode == 0xf0) {
-		blockHeader.headerCount =
-		    siteInitHeaderCount + stFeld[colorID].blocksOut - 1 +
-		    ((3 - colorID) * 8);
+		headerCount = siteInitHeaderCount + stFeld[colorID].blocksOut - 1 + ((3 - colorID) * 8);
 	    }
 	    else {
-		blockHeader.headerCount =
-		    siteInitHeaderCount + stFeld[colorID].blocksOut - 1;
+		headerCount = siteInitHeaderCount + stFeld[colorID].blocksOut - 1;
 	    }
-	    headerCount++;
-	    DBG(4, "BlockHeader.headerCount fuer colorID %i ist %i\n", colorID, blockHeader.headerCount);
-	    blockHeader.blockCount = stFeld[colorID].blocksOut;
-	    blockHeader.tonerColor = colorID;
+	    DBG(4, "BlockHeader.headerCount fuer colorID %i ist %i\n", colorID, headerCount);
+	    write_block(M2X00W_BLOCK_DATA, &header, sizeof(header), NULL, &stFeld[colorID].pageOut[stFeld[colorID].indexPageOut]);
 
-	    blockHeader.prSum = checksum(&blockHeader, sizeof(blockHeader) - 1);
-
-	    memcpy (&stFeld[colorID].pageOut[stFeld[colorID].indexPageOut],
-		    &blockHeader, sizeof(blockHeader));
-	    stFeld[colorID].indexPageOut += sizeof(blockHeader);
-
-	    hex_dump(4, "Blockheader: ", &blockHeader, sizeof(blockHeader));
+	    stFeld[colorID].indexPageOut += sizeof(struct header) + sizeof(header) + 1;
+	    headerCount = tmp + 1;
+	    hex_dump(4, "Blockheader: ", &header, sizeof(header));
 
 	    memcpy (&stFeld[colorID].pageOut[stFeld[colorID].indexPageOut],
 		    &stFeld[colorID].blockBuffer[0],
@@ -632,8 +608,8 @@ writeJobHeader (void)
 {
     struct block_begin begin = { .model = model, .color = 0x10 };
     struct block_params params = { .res_y = res_y, .res_x = res_x };
-    write_block(M2X00W_BLOCK_BEGIN, &begin, sizeof(begin), out_stream);
-    write_block(M2X00W_BLOCK_PARAMS, &params, sizeof(params), out_stream);
+    write_block(M2X00W_BLOCK_BEGIN, &begin, sizeof(begin), out_stream, NULL);
+    write_block(M2X00W_BLOCK_PARAMS, &params, sizeof(params), out_stream, NULL);
     DBG(1, "JobHeader written.\n");
 }
 
@@ -654,7 +630,7 @@ writePageHeader (void)
     int tmp = headerCount;
 
     headerCount = page_block_seq;
-    write_block(M2X00W_BLOCK_STARTPAGE, &page, sizeof(page), out_stream);
+    write_block(M2X00W_BLOCK_STARTPAGE, &page, sizeof(page), out_stream, NULL);
     headerCount = tmp;
     hex_dump(4, "Seitenheader: ", &page, sizeof(page));
 }
@@ -1032,7 +1008,6 @@ main (int argc, char *argv[])
         form = form_2400;
         encode = prepDoEncode;
         res_x = RES_MULT2;
-        blockHeader.linesPerBlock1 = 0x50;
     }
 
 /* 1. parameter lesen */
@@ -1194,8 +1169,8 @@ main (int argc, char *argv[])
     if (jobHeaderWritten == 1) {
 	unsigned char zero = 0;
 
-	write_block(M2X00W_BLOCK_ENDPAGE, &zero, sizeof(zero), out_stream);///// BUG?
-	write_block(M2X00W_BLOCK_END, &zero, sizeof(zero), out_stream);
+	write_block(M2X00W_BLOCK_ENDPAGE, &zero, sizeof(zero), out_stream, NULL);///// BUG?
+	write_block(M2X00W_BLOCK_END, &zero, sizeof(zero), out_stream, NULL);
 	DBG(1, "JobFooter written.\n");
     }
 
