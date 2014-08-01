@@ -721,18 +721,18 @@ doEncode (int inByte, int colorID)
 
 	    /* pruefsumme berechnen */
 	    blockHeaderStc.prSum = 0;
-	    for (psr = 0; psr < 14; psr++) {
+	    for (psr = 0; psr < sizeof(blockHeaderStc) - 1; psr++) {
 		blockHeaderStc.prSum += blockHeader[psr];
 
 	    }
 	    memcpy (&stFeld[colorID].pageOut[stFeld[colorID].indexPageOut],
-		    blockHeader, 15);
-	    stFeld[colorID].indexPageOut += 15;
+		    blockHeader, sizeof(blockHeaderStc));
+	    stFeld[colorID].indexPageOut += sizeof(blockHeaderStc);
 
 	    if (verb > 4) {
 		int vR;
 		fprintf (stderr, "Blockheader: ");
-		for (vR = 0; vR < 15; vR++) {
+		for (vR = 0; vR < sizeof(blockHeaderStc); vR++) {
 		    fprintf (stderr, " %.2x", blockHeader[vR]);
 		}
 		fprintf (stderr, "\n");
@@ -790,14 +790,14 @@ writeJobHeader (void)
 {
     long psr;
 
-    writeOut (out_stream, &fileHeader[0], 9);
+    writeOut (out_stream, &fileHeader[0], sizeof(fileHeader));
     headerCount++;
 
-    for (psr = 0; psr < 14; psr++) {
+    for (psr = 0; psr < sizeof(jobHeaderStc) - 1; psr++) {
 	jobHeaderStc.prSum += jobHeader[psr];
     }
 
-    writeOut (out_stream, &jobHeader[0], 15);
+    writeOut (out_stream, &jobHeader[0], sizeof(jobHeaderStc));
     headerCount++;
     if (verb > 1)
 	fprintf (stderr, "JobHeader written.\n");
@@ -826,12 +826,12 @@ writeSiteHeader (void)
     for (psr = 0; psr < 34; psr++) {
 	seitenHeaderStc.prSum += seitenHeader[psr];
     }
-    writeOut (out_stream, &seitenHeader[0], 35);
+    writeOut (out_stream, &seitenHeader[0], sizeof(seitenHeaderStc));
 
     if (verb > 4) {
 	int vR;
 	fprintf (stderr, "Seitenheader: ");
-	for (vR = 0; vR < 35; vR++) {
+	for (vR = 0; vR < sizeof(seitenHeaderStc); vR++) {
 	    fprintf (stderr, " %.2x", seitenHeader[vR]);
 	}
 	fprintf (stderr, "\n");
@@ -1510,17 +1510,17 @@ main (int argc, char *argv[])
 	/* footer ausgeben */
 	jobFooterStc.headerCount = headerCount++;
 	/* pruefsumme berechnen */
-	for (psr = 0; psr < 7; psr++) {
+	for (psr = 0; psr < sizeof(jobFooterStc) - 1; psr++) {
 	    jobFooterStc.prSum += jobFooter[psr];
 	}
-	writeOut (out_stream, &jobFooter[0], 8);
+	writeOut (out_stream, &jobFooter[0], sizeof(jobFooterStc));
 
 	fileFooterStc.headerCount = headerCount++;
 	/* pruefsumme berechnen */
-	for (psr = 0; psr < 7; psr++) {
+	for (psr = 0; psr < sizeof(fileFooterStc) - 1; psr++) {
 	    fileFooterStc.prSum += fileFooter[psr];
 	}
-	writeOut (out_stream, &fileFooter[0], 8);
+	writeOut (out_stream, &fileFooter[0], sizeof(fileFooterStc));
 	if (verb > 1)
 	    fprintf (stderr, "JobFooter written.\n");
     }
