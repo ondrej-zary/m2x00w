@@ -450,16 +450,9 @@ void
 doEncode (int inByte, int colorID, struct steuerFelder *stFeld)
 {
     if (stFeld->bytesIn == 0) {
-	unsigned char dummyTable[1] = { 0x80 };
 	stFeld->linesOut++;
-	/* jede Zeile beginnt mit einer Tabelle */
-	/* die tabellenkompression wurde vorerst weggelassen deshalb eine leere tabelle */
-	DBG(5, "Dummy Tabelle fuer neue Zeile %3i ausgeben .\n", stFeld->linesOut);
-	memcpy (&stFeld->
-		blockBuffer[stFeld->indexBlockBuffer], &dummyTable[0],
-		1);
-	stFeld->indexBlockBuffer += 1;
-
+	/* table compression not implemented: write an empty table */
+	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 0x80;
     }
     if (saveToner > 0) {
 	/* spar Toner indem es jedes 2te bit loescht. */
