@@ -42,7 +42,7 @@ int PaperCode = 4;
 int ResXmul = 1;
 int ResYmul = 1;
 int colorMode = 0;
-int thisSiteColorMode = 0;
+int thisPageColorMode = 0;
 
 int saveToner = 0;
 int useUCR = 0;
@@ -51,7 +51,7 @@ int linesPerBlock;
 unsigned char paperFormat;
 unsigned char paperQuality;
 unsigned short blocksPerPage;
-unsigned short thisSiteBlocksPerPage;
+unsigned short thisPageBlocksPerPage;
 unsigned int resBreite;
 unsigned int resHoehe;
 
@@ -665,7 +665,7 @@ doEncode (int inByte, int colorID)
 	    blockHeader.linesPerBlock1 = (char) (linesPerBlock);
 	    blockHeader.linesPerBlock2 = (char) (linesPerBlock >> 8);
 	    /* die berechnung der headerCount muss sicherstellen das die reichenfolge stimmt */
-	    if (thisSiteColorMode == 0xf0) {
+	    if (thisPageColorMode == 0xf0) {
 		blockHeader.headerCount =
 		    siteInitHeaderCount + stFeld[colorID].blocksOut - 1 +
 		    ((3 - colorID) * 8);
@@ -752,7 +752,7 @@ writeJobHeader (void)
 }
 
 void
-writeSiteHeader (void)
+writePageHeader (void)
 {
     /* seitenHeader ausgeben */
     seitenHeader.headerCount = reservedHeaderCountSH;
@@ -760,9 +760,9 @@ writeSiteHeader (void)
     seitenHeader.breite2 = (unsigned char) (resBreite >> 8);
     seitenHeader.hoehe1 = (unsigned char) resHoehe;
     seitenHeader.hoehe2 = (unsigned char) (resHoehe >> 8);
-    seitenHeader.colorMode = thisSiteColorMode;
-    seitenHeader.blocksPerPage1 = thisSiteBlocksPerPage;
-    seitenHeader.blocksPerPage2 = thisSiteBlocksPerPage;
+    seitenHeader.colorMode = thisPageColorMode;
+    seitenHeader.blocksPerPage1 = thisPageBlocksPerPage;
+    seitenHeader.blocksPerPage2 = thisPageBlocksPerPage;
 
     seitenHeader.paperFormat = PaperCode;
     seitenHeader.paperQuality = MediaCode;
@@ -821,11 +821,11 @@ readPkmraw (void)
 	/* eine blde art die farbseiten zu zaehlen - blocksperpage ist bei farbe 32 (was dann 4 farbseiten ergibt) */
 	/* bei sw ist es 8, also nur eine farbseite */
 	if (ccs >= (blocksPerPage / 8)) {
-	    writeSiteHeader ();
+	    writePageHeader ();
 	    if (verb > 1)
 		fprintf (stderr, "###Seitenheader geschrieben\n");
 
-	    if (thisSiteColorMode == 0xf0) {
+	    if (thisPageColorMode == 0xf0) {
 		fwrite(stFeld[3].pageOut, 1, stFeld[3].indexPageOut, out_stream);
 		fwrite(stFeld[2].pageOut, 1, stFeld[2].indexPageOut, out_stream);
 		fwrite(stFeld[1].pageOut, 1, stFeld[1].indexPageOut, out_stream);
@@ -862,8 +862,8 @@ readPkmraw (void)
 	    }
 	    reservedHeaderCountSH = headerCount++;
 	    siteInitHeaderCount = headerCount;
-	    thisSiteColorMode=colorMode;
-	    thisSiteBlocksPerPage=blocksPerPage;
+	    thisPageColorMode=colorMode;
+	    thisPageBlocksPerPage=blocksPerPage;
 	    if (verb > 1)
 		fprintf (stderr, "Reservierter SeitenHeaderCount ist %2d\n", reservedHeaderCountSH );
 
@@ -876,8 +876,8 @@ readPkmraw (void)
 		if (verb > 1)
 		    fprintf (stderr, "--------------- Switch to Black and White !\n");
 		
-		thisSiteColorMode=(model == M2300W) ? 0x00 : 0x80;
-		thisSiteBlocksPerPage=0x08;
+		thisPageColorMode=(model == M2300W) ? 0x00 : 0x80;
+		thisPageBlocksPerPage=0x08;
 		headerCount=headerCount-24;
 		siteInitHeaderCount = headerCount;
 		clearBuffer (1);
@@ -1205,11 +1205,11 @@ readPkmraw (void)
 
 	ccs++;
     }
-    writeSiteHeader ();
+    writePageHeader ();
     if (verb > 1)
 	fprintf (stderr, "###Seitenheader geschrieben\n");
 
-    if (thisSiteColorMode == 0xf0) {
+    if (thisPageColorMode == 0xf0) {
 	fwrite(stFeld[3].pageOut, 1, stFeld[3].indexPageOut, out_stream);
 	fwrite(stFeld[2].pageOut, 1, stFeld[2].indexPageOut, out_stream);
 	fwrite(stFeld[1].pageOut, 1, stFeld[1].indexPageOut, out_stream);
