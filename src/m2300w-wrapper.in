@@ -61,7 +61,7 @@ $BASENAME [options] [ps-file]
 
 Foomatic wrapper script for the m2300w printer driver.
 This script reads a Postscript ps-file or standard input
-and converts it to the Konica Minolta magicolor 2300W/2400W
+and converts it to the Konica Minolta magicolor 2300W/2400W/2500W
 proprietary raster format.
 
 Version $PACKAGE_VERSION
@@ -71,6 +71,7 @@ Options:
 -M model	  Choose printer model [$MODEL]
 		    2300W
 		    2400W
+		    2500W
 
 -d		  Increase debug level.
 		  Can be specified more than once.
@@ -233,6 +234,7 @@ shift `expr $OPTIND - 1`
 case "$MODEL" in
 2300W) DRIVER="$BINDIR/m2300w" ;;
 2400W) DRIVER="$BINDIR/m2400w" ;;
+2500W) DRIVER="$BINDIR/m2500w" ;;
 *)     error "Unknown model $MODEL" ;;
 esac
 
