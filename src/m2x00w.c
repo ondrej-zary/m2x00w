@@ -473,7 +473,7 @@ writeOut (FILE * ziel, void *vquelle, long length)
 void
 encodeToBlockBuffer (int colorID)
 {
-    int debu,z;
+    int z;
     long rohBytes = stFeld[colorID].indexEncBuffer - stFeld[colorID].rleCount;
     int rohByteCount = 0;
     unsigned char rleOut[2];
@@ -485,14 +485,8 @@ encodeToBlockBuffer (int colorID)
 		 (int) stFeld[colorID].indexEncBuffer, (int) colorID,
 		 (int) rohBytes, (int) stFeld[colorID].rleCount,
 		 stFeld[colorID].lastByte);
-    if (verb > 5) {
-	int debu;
-	fprintf (stderr, "Daten fuer Encoder:\n");
-	for (debu = 0; debu < stFeld[colorID].indexEncBuffer; debu++) {
-	    fprintf (stderr, " %.2x", stFeld[colorID].encBuffer[debu]);
-	}
-	fprintf (stderr, "\n");
-    }
+    if (verb > 5)
+	hex_dump("Daten fuer Encoder:\n", stFeld[colorID].encBuffer, stFeld[colorID].indexEncBuffer);
     /* rohbytes verarbeiten */
     /* 64er stufe */
     while ((rohBytes - (rohByteCount * 64)) >= 64) {
@@ -510,15 +504,8 @@ encodeToBlockBuffer (int colorID)
 	if (verb > 5)
 	    fprintf (stderr, "OK\n");
 
-	if (verb > 5) {
-	    fprintf (stderr, "Rohbytes:\n");
-	    for (debu = 0; debu < (65); debu++) {
-		fprintf (stderr, " %.2x", rBOut[debu]);
-	    }
-	    fprintf (stderr, "\n");
-	}
-
-
+	if (verb > 5)
+	    hex_dump("Rohbytes:\n", rBOut, 65);
     }
     if ((rohBytes - (rohByteCount * 64)) > 0) {
 	/* XXX */
@@ -542,13 +529,8 @@ encodeToBlockBuffer (int colorID)
 	if (verb > 5)
 	    fprintf (stderr, "OK\n");
 
-	if (verb > 5) {
-	    fprintf (stderr, "Rohbytes:\n");
-	    for (debu = 0; debu < (rohBytes - (64 * rohByteCount)); debu++) {
-		fprintf (stderr, " %.2x", rBOut[debu]);
-	    }
-	    fprintf (stderr, "\n");
-	}
+	if (verb > 5)
+	    hex_dump("Rohbytes:\n", rBOut, rohBytes - (64 * rohByteCount));
 
 	/* XXX */
 	free(rBOut);
@@ -570,13 +552,8 @@ encodeToBlockBuffer (int colorID)
 	        fprintf (stderr,
 		         "---->64er RLE Encoding: 2048 mal %.2x - codiert als: %.2x%.2x\n",
 		         rleOut[1], rleOut[0], rleOut[1]);
-	    if (verb > 5) {
-	        fprintf (stderr, "64er RLE::\n");
-	        for (debu = 0; debu < (2); debu++) {
-		    fprintf (stderr, " %.2x", rleOut[debu]);
-	        }
-	        fprintf (stderr, "\n");
-		}
+	    if (verb > 5)
+		hex_dump("64er RLE::\n", rleOut, 2);
 	}
     	rle64 -= 64;
     }
@@ -592,16 +569,8 @@ encodeToBlockBuffer (int colorID)
 	    fprintf (stderr,
 		     "---->64er RLE Encoding: %i mal %.2x - codiert als: %.2x%.2x\n",
 		     rle64, rleOut[1], rleOut[0], rleOut[1]);
-	if (verb > 5) {
-	    fprintf (stderr, "64er RLE::\n");
-	    for (debu = 0; debu < (2); debu++) {
-		fprintf (stderr, " %.2x", rleOut[debu]);
-	    }
-	    fprintf (stderr, "\n");
-	}
-
-
-
+	if (verb > 5)
+	    hex_dump("64er RLE::\n", rleOut, 2);
     }
     if (rle1 > 0) {
 	rleOut[0] = 128 + rle1;
@@ -614,14 +583,8 @@ encodeToBlockBuffer (int colorID)
 		     "---->1er RLE Encoding: %i mal %.2x - codiert als: %.2x%.2x\n",
 		     rle1, rleOut[1], rleOut[0], rleOut[1]);
 
-	if (verb > 5) {
-	    fprintf (stderr, " 1er RLE::\n");
-	    for (debu = 0; debu < (2); debu++) {
-		fprintf (stderr, " %.2x", rleOut[debu]);
-	    }
-	    fprintf (stderr, "\n");
-	}
-
+	if (verb > 5)
+	    hex_dump(" 1er RLE::\n", rleOut, 2);
     }
 
 
