@@ -104,18 +104,16 @@ struct block_startpage {
     unsigned short x_end;
     unsigned short y_start;
     unsigned short y_end;
-    unsigned char blocks1;	/* blocks per page */
-    unsigned char zero1;
-    unsigned char blocks2;	/* blocks per page */
-    unsigned char zero2;
+    unsigned short blocks1;	/* blocks per page */
+    unsigned short blocks2;	/* blocks per page (again?) */
     unsigned char tray;
     unsigned char paper_size;
     unsigned short custom_width;/* custom size - width in mm */
     unsigned short custom_height;/* custom size - height in mm */
-    unsigned char zero3;
+    unsigned char zero1;
     unsigned char duplex;	/* 0x80 = duplex on (2300W only)*/
     unsigned char paper_weight;
-    unsigned char zero4;
+    unsigned char zero2;
     unsigned char unknown;	/* 01 for 2300W or ???, else 00 */
     unsigned char zeros[3];
 } __attribute__((packed));
@@ -658,8 +656,8 @@ writePageHeader (void)
 	.copies = 1,
 	.x_end = cpu_to_le16(resBreite),
 	.y_end = cpu_to_le16(resHoehe),
-	.blocks1 = thisPageBlocksPerPage,
-	.blocks2 = thisPageBlocksPerPage,
+	.blocks1 = cpu_to_le16(thisPageBlocksPerPage),
+	.blocks2 = cpu_to_le16(thisPageBlocksPerPage),
 	.paper_size = PaperCode,
 	.paper_weight = MediaCode,
 	.unknown = (model == M2300W) ? 0x01 : 0x00,
