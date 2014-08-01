@@ -455,7 +455,6 @@ void
 encodeToBlockBuffer (int colorID, struct steuerFelder *stFeld)
 {
     long rohBytes = stFeld->indexEncBuffer - stFeld->rleCount;
-    int rle64, rle1;
     void *encBuffer = stFeld->encBuffer;
 
     DBG(5, "--> Ausgabe von %.3i Bytes fuer colorID %i davon %.3i Rohbytes und %.3i mal %.2x RLE encoded am Ende.\n",
@@ -474,8 +473,7 @@ encodeToBlockBuffer (int colorID, struct steuerFelder *stFeld)
 	hex_dump(5, "Rohbytes:\n", &stFeld->blockBuffer[stFeld->indexBlockBuffer - chunk - 1], chunk + 1);
     }
 
-    /* rle verarbeiten */
-
+    /* RLE */
     if (stFeld->rleCount >= 4096) {
         /* encode 4096B run as two 2048B runs (happens only on 2400W at 2400dpi) */
         stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 0xe0;
@@ -484,23 +482,17 @@ encodeToBlockBuffer (int colorID, struct steuerFelder *stFeld)
         stFeld->blockBuffer[stFeld->indexBlockBuffer++] = stFeld->lastByte;
         stFeld->rleCount -= 4096;
     }
-
-    rle64 = stFeld->rleCount / 64;
-    rle1 = (stFeld->rleCount) - (rle64 * 64);
-
-    if (rle64 > 0) {
-	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 192 + rle64;
+    if (stFeld->rleCount / 64 > 0) {
+	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 192 + stFeld->rleCount / 64;
 	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = stFeld->lastByte;
-	DBG(5, "---->64er RLE Encoding: %i mal %.2x\n", rle64, stFeld->lastByte);
-	hex_dump(5, "64er RLE::\n", &stFeld->blockBuffer[stFeld->indexBlockBuffer - 2], 2);
+	stFeld->rleCount -= stFeld->rleCount / 64 * 64;
     }
-    if (rle1 > 0) {
-	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 128 + rle1;
+    if (stFeld->rleCount > 0) {
+	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 128 + stFeld->rleCount;
 	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = stFeld->lastByte;
-	DBG(5, "---->1er RLE Encoding: %i mal %.2x\n", rle1, stFeld->lastByte);
-	hex_dump(5, " 1er RLE::\n", &stFeld->blockBuffer[stFeld->indexBlockBuffer - 2], 2);
     }
 
+    stFeld->rleCount = 0;
 
     DBG(5, "--->RLE Encode for %i done.\n", colorID);
     stFeld->indexEncBuffer = 0;
@@ -549,7 +541,6 @@ doEncode (int inByte, int colorID, struct steuerFelder *stFeld)
 
 	encodeToBlockBuffer (colorID, stFeld);
 	stFeld->bytesIn = 0;
-	stFeld->rleCount = 0;
 	if (model == M2500W) {
             int rowbytes = stFeld->indexBlockBuffer - stFeld->curLinePos;
 	    char pad_header[2];
