@@ -55,6 +55,8 @@ int reservedHeaderCountSH =0;   /* reservierter HeaderCount fuer den Seitenheade
 
 long pix[4] = { 0, 0, 0, 0 };	/* pixel counter (C,M,Y,K) */
 
+void (*encode)(int inByte, int colorID);
+
 struct format
 {
     char desc[32];
@@ -877,18 +879,10 @@ readPkmraw (void)
 	    DBG(5, "erzeuge %i zeilen mit je %i bytes (0x00) am Anfang\n", leadLines, (resBreite / 8));
 	    for (shz = 0; shz < leadLines; shz++) {	/* vorschleife fuer fehlende hohenzeilen */
 		for (sbz = 0; sbz < (resBreite / 8); sbz++) {
-		    if (colorMode == 0xf0) {
-		        if (model == M2300W)
-		            doEncode (0x00, colorKey[ccs]);
-		        else
-			    prepDoEncode (0x00, colorKey[ccs]);
-		    }
-		    else {
-		        if (model == M2300W)
-		            doEncode (0x00, colorKey[3]);
-		        else
-			    prepDoEncode (0x00, colorKey[3]);
-		    }
+		    if (colorMode == 0xf0)
+		        encode (0x00, colorKey[ccs]);
+		    else
+		        encode (0x00, colorKey[3]);
 		}
 	    }
 	}
@@ -909,18 +903,10 @@ readPkmraw (void)
 	    else {
 		DBG(5, "erzeuge %i bytes mit 0x00 am Anfang\n", leadPixBytes);
 		for (sbz = 0; sbz < leadPixBytes; sbz++) {
-		    if (colorMode == 0xf0) {
-		        if (model == M2300W)
-		            doEncode (0x00, colorKey[ccs]);
-		        else
-			    prepDoEncode (0x00, colorKey[ccs]);
-		    }
-		    else {
-		        if (model == M2300W)
-		            doEncode (0x00, colorKey[3]);
-		        else
-			    prepDoEncode (0x00, colorKey[3]);
-		    }
+		    if (colorMode == 0xf0) 
+		       encode (0x00, colorKey[ccs]);
+		    else
+		       encode (0x00, colorKey[3]);
 		}
 
 	    }
@@ -951,16 +937,10 @@ readPkmraw (void)
                             pix[ccs]++;
                         if (c & 0x01)
                             pix[ccs]++;
-                        if (model == M2300W)
-                            doEncode (c, colorKey[ccs]);
-                        else
-			    prepDoEncode (c, colorKey[ccs]);
+                        encode (c, colorKey[ccs]);
 		    }
 		    else {
-		        if (model == M2300W)
-		            doEncode (c, colorKey[3]);
-		        else
-			    prepDoEncode (c, colorKey[3]);
+		        encode (c, colorKey[3]);
 		    }
 		}
 		else {
@@ -985,18 +965,10 @@ readPkmraw (void)
 	    else {
 		DBG(5, "erzeuge %i bytes mit 0x00 am Ende\n", trailPixBytes);
 		for (sbz = 0; sbz < trailPixBytes; sbz++) {
-		    if (colorMode == 0xf0) {
-		        if (model == M2300W)
-		            doEncode (0x00, colorKey[ccs]);
-		        else
-			    prepDoEncode (0x00, colorKey[ccs]);
-		    }
-		    else {
-		        if (model == M2300W)
-		            doEncode (0x00, colorKey[3]);
-		        else
-			    prepDoEncode (0x00, colorKey[3]);
-		    }
+		    if (colorMode == 0xf0)
+		        encode (0x00, colorKey[ccs]);
+		    else
+		        encode (0x00, colorKey[3]);
 		}
 
 	    }
@@ -1022,18 +994,10 @@ readPkmraw (void)
 	    DBG(5, "erzeuge %i zeilen mit je %i bytes (0x00) am Ende\n", trailLines, (resBreite / 8));
 	    for (shz = 0; shz < trailLines; shz++) {	/* endschleife fuer fehlende hohenzeilen */
 		for (sbz = 0; sbz < (resBreite / 8); sbz++) {
-		    if (colorMode == 0xf0) {
-		        if (model == M2300W)
-		            doEncode (c, colorKey[ccs]);
-		        else
-			    prepDoEncode (c, colorKey[ccs]);
-		    }
-		    else {
-		        if (model == M2300W)
-		            doEncode (c, colorKey[3]);
-		        else
-			    prepDoEncode (c, colorKey[3]);
-		    }
+		    if (colorMode == 0xf0)
+		        encode (c, colorKey[ccs]);
+		    else
+			encode (c, colorKey[3]);
 		}
 	    }
 	}
@@ -1080,9 +1044,11 @@ main (int argc, char *argv[])
     if (!strcmp(prog_name, "m2300w")) {
         model = M2300W;
         form = form_2300;
+        encode = doEncode;
     } else if (!strcmp(prog_name, "m2400w")) {
         model = M2400W;
         form = form_2400;
+        encode = prepDoEncode;
         fileHeader[6] = 0x85;
         fileHeader[8] = 0xB1;
         jobHeader.res2 = 0x01;
