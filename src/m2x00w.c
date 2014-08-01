@@ -57,7 +57,7 @@ unsigned int resHoehe;
 int jobHeaderWritten = 0;
 int headerCount = 0;		/* zaehler fuer alle header */
 int siteInitHeaderCount = 0;	/* zaehler fuer alle header */
-int reservedHeaderCountSH =0;   /* reservierter HeaderCount fuer den Seitenheader da dieser erst spaeter verwendet wird */
+int page_block_seq;   /* saved sequence number for startpage block */
 
 long pix[4] = { 0, 0, 0, 0 };	/* pixel counter (C,M,Y,K) */
 
@@ -92,6 +92,26 @@ struct block_params {
     unsigned char paper_weight;
     unsigned char interleave;
     unsigned char zeros[3];
+} __attribute__((packed));
+
+struct block_startpage {
+    unsigned char color;
+    unsigned char one;		/* 0x01 */
+    unsigned short x_start;
+    unsigned short x_end;
+    unsigned short y_start;
+    unsigned short y_end;
+    unsigned char blocks1;	/* blocks per page */
+    unsigned char zero1;
+    unsigned char blocks2;	/* blocks per page */
+    unsigned char zero2;
+    unsigned char tray;
+    unsigned char paper_size;
+    unsigned char zeros1[6];
+    unsigned char paper_weight;
+    unsigned char zero3;
+    unsigned char unknown;	/* 01 for M2300W, else 00 */
+    unsigned char zeros2[3];
 } __attribute__((packed));
 
 struct format
@@ -217,48 +237,6 @@ struct media med[7] = {
 /* 4*/ {"Briefkopf"},
 /* 5*/ {"Postkarte"},
 /* 6*/ {"Etikette"},
-};
-
-struct
-{
-    unsigned char seitenHeaderT1[2];
-    unsigned char headerCount;
-    unsigned char seitenHeaderT2[3];
-    unsigned char colorMode;
-    unsigned char seitenHeaderT2b[3];
-    unsigned char breite1;
-    unsigned char breite2;
-    unsigned char seitenHeaderT3[2];
-    unsigned char hoehe1;
-    unsigned char hoehe2;
-    unsigned char blocksPerPage1;
-    unsigned char seitenHeaderT4[1];
-    unsigned char blocksPerPage2;
-    unsigned char seitenHeaderT5[2];
-    unsigned char paperFormat;
-    unsigned char seitenHeaderT6[6];
-    unsigned char paperQuality;
-    unsigned char seitenHeaderT7[5];
-    unsigned char prSum;
-}
-page_header =
-{
-    { 0x1B, 0x51} ,
-    0x02,
-    { 0x1C, 0x00, 0xAE},
-    0x00,
-    { 0x01, 0x00, 0x00},
-    0x00, 0x00,
-    { 0x00, 0x00},
-    0x00, 0x00, 0x08,
-    { 0x00},
-    0x08,
-    { 0x00, 0x00},
-    0x04,
-    { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-    0x00,
-    { 0x00, 0x01, 0x00, 0x00, 0x00},
-    0x00
 };
 
 struct
@@ -662,23 +640,23 @@ writeJobHeader (void)
 void
 writePageHeader (void)
 {
-    /* seitenHeader ausgeben */
-    page_header.headerCount = reservedHeaderCountSH;
-    page_header.breite1 = (unsigned char) resBreite;
-    page_header.breite2 = (unsigned char) (resBreite >> 8);
-    page_header.hoehe1 = (unsigned char) resHoehe;
-    page_header.hoehe2 = (unsigned char) (resHoehe >> 8);
-    page_header.colorMode = thisPageColorMode;
-    page_header.blocksPerPage1 = thisPageBlocksPerPage;
-    page_header.blocksPerPage2 = thisPageBlocksPerPage;
+    struct block_startpage page = {
+	.color = thisPageColorMode,
+	.one = 0x01,
+	.x_end = cpu_to_le16(resBreite),
+	.y_end = cpu_to_le16(resHoehe),
+	.blocks1 = thisPageBlocksPerPage,
+	.blocks2 = thisPageBlocksPerPage,
+	.paper_size = PaperCode,
+	.paper_weight = MediaCode,
+	.unknown = (model == M2300W) ? 0x01 : 0x00,
+    };
+    int tmp = headerCount;
 
-    page_header.paperFormat = PaperCode;
-    page_header.paperQuality = MediaCode;
-
-    page_header.prSum = checksum(&page_header, sizeof(page_header) - 1);
-    fwrite(&page_header, 1, sizeof(page_header), out_stream);
-
-    hex_dump(4, "Seitenheader: ", &page_header, sizeof(page_header));
+    headerCount = page_block_seq;
+    write_block(M2X00W_BLOCK_STARTPAGE, &page, sizeof(page), out_stream);
+    headerCount = tmp;
+    hex_dump(4, "Seitenheader: ", &page, sizeof(page));
 }
 
 
@@ -756,11 +734,11 @@ readPkmraw (void)
 		writeJobHeader ();
 		jobHeaderWritten = 1;
 	    }
-	    reservedHeaderCountSH = headerCount++;
+	    page_block_seq = headerCount++;
 	    siteInitHeaderCount = headerCount;
 	    thisPageColorMode=colorMode;
 	    thisPageBlocksPerPage=blocksPerPage;
-	    DBG(1, "Reservierter SeitenHeaderCount ist %2d\n", reservedHeaderCountSH );
+	    DBG(1, "Reservierter SeitenHeaderCount ist %2d\n", page_block_seq);
 
 	}
 	DBG(1, "Beginne neue Farbe\n");
@@ -1054,8 +1032,6 @@ main (int argc, char *argv[])
         form = form_2400;
         encode = prepDoEncode;
         res_x = RES_MULT2;
-        page_header.colorMode = 0x80;
-        page_header.seitenHeaderT7[1] = 0x00;
         blockHeader.linesPerBlock1 = 0x50;
     }
 
