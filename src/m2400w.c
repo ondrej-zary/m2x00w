@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <libgen.h>
 
 /* ----------------------------------------------------------------------
     other Variables
@@ -34,6 +35,8 @@ FILE *in_stream, *out_stream;
 /* FILE *cStream, *mStream, *yStream, *kStream; */
 
 int verb = 0;			/* verbose level */
+enum m2x00w_model { M2300W, M2400W };
+enum m2x00w_model model;
 int MediaCode = 0;
 int PaperCode = 4;
 int ResXmul = 1;
@@ -88,7 +91,52 @@ struct format
     int mediaMustBe;
 };
 
-struct format form[42] = {
+struct format form_2300[42] = {
+/* 0*/ {"no data\0", 0, 0, 0, 0, -1},
+/* 1*/ {"no data\0", 0, 0, 0, 0, -1},
+/* 2*/ {"no data\0", 0, 0, 0, 0, -1},
+/* 3*/ {"no data\0", 0, 0, 0, 0, -1},
+/* 4*/ {"A4\0", 4752, 6808, 0, 0, -1},
+/* 5*/ {"no data\0", 0, 0, 0, 0, -1},
+/* 6*/ {"B5 JIS\0", 4088, 5856, 0, 0, -1},
+/* 7*/ {"no data\0", 0, 0, 0, 0, -1},
+/* 8*/ {"A5\0", 3288, 4752, 0, 0, -1},
+/* 9*/ {"no data\0", 0, 0, 0, 0, -1},
+/* a*/ {"no data\0", 0, 0, 0, 0, -1},
+/* b*/ {"no data\0", 0, 0, 0, 0, -1},
+/* c*/ {"no data\0", 0, 0, 0, 0, -1},
+/* d*/ {"no data\0", 0, 0, 0, 0, -1},
+/* e*/ {"no data\0", 0, 0, 0, 0, -1},
+/* f*/ {"no data\0", 0, 0, 0, 0, -1},
+/*10*/ {"no data\0", 0, 0, 0, 0, -1},
+/*11*/ {"no data\0", 0, 0, 0, 0, -1},
+/*12*/ {"Folio\0", 4752, 7584, 0, 0, -1},
+/*13*/ {"no data\0", 0, 0, 0, 0, -1},
+/*14*/ {"no data\0", 0, 0, 0, 0, -1},
+/*15*/ {"no data\0", 0, 0, 0, 0, -1},
+/*16*/ {"no data\0", 0, 0, 0, 0, -1},
+/*17*/ {"no data\0", 0, 0, 0, 0, -1},
+/*18*/ {"no data\0", 0, 0, 0, 0, -1},
+/*19*/ {"Legal\0", 4896, 8136, 0, 0, -1},
+/*1a*/ {"Government Legal\0", 4896, 7592, 0, 0, -1},
+/*1b*/ {"Letter\0", 4896, 6392, 0, 0, -1},
+/*1c*/ {"no data\0", 0, 0, 0, 0, -1},
+/*1d*/ {"no data\0", 0, 0, 0, 0, -1},
+/*1e*/ {"no data\0", 0, 0, 0, 0, -1},
+/*1f*/ {"Executive\0", 6096, 4144, 0, 0, -1},
+/*20*/ {"no data\0", 0, 0, 0, 0, -1},
+/*21*/ {"Statement\0", 3096, 4896, 0, 0, -1},
+/*22*/ {"no data\0", 0, 0, 0, 0, -1},
+/*23*/ {"no data\0", 0, 0, 0, 0, -1},
+/*24*/ {"Kuvert Monarch\0", 2120, 4296, 0, 0, 3},
+/*25*/ {"Kuver #10\0", 2272, 5496, 0, 0, 3},
+/*26*/ {"Kuvert DL\0", 2392, 4992, 0, 0, 3},
+/*27*/ {"Kuvert C5\0", 3616, 5200, 0, 0, 3},
+/*28*/ {"Kuvert C6\0", 2480, 3616, 0, 0, 3},
+/*29*/ {"B5 ISO\0", 3944, 5696, 0, 0, 3},
+};
+
+struct format form_2400[42] = {
 /* 0*/ {"no data\0", 0, 0, 0, 0, -1},
 /* 1*/ {"no data\0", 0, 0, 0, 0, -1},
 /* 2*/ {"no data\0", 0, 0, 0, 0, -1},
@@ -133,6 +181,8 @@ struct format form[42] = {
 /*29*/ {"B5 ISO\0", 3952, 5696, 0, 0, 3},
 };
 
+struct format *form;
+
 /* noch nicht eingebaute
 
 31;Letter Plus;4896;7408;216;322;8;926;
@@ -166,7 +216,7 @@ struct media med[7] = {
 
    ---------------------------------------------------------------------------*/
 
-unsigned char fileHeader[] = { 0x1B, 0x40, 0x00, 0x02, 0x00, 0xBF, 0x85, 0x10, 0xB1 };
+unsigned char fileHeader[] = { 0x1B, 0x40, 0x00, 0x02, 0x00, 0xBF, 0x82, 0x10, 0xAE };
 
  /* char jobHeader[] ={0x1B,0x50,0x01,0x08,0x00,0xAF,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x24}; */
 
@@ -181,7 +231,7 @@ struct
 jobHeaderStc =
 {
     { 0x1B, 0x50, 0x01, 0x08, 0x00, 0xAF},
-    0x01, 0x01,
+    0x01, 0x00,
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
     0x00
 };
@@ -217,7 +267,7 @@ seitenHeaderStc =
     { 0x1B, 0x51} ,
     0x02,
     { 0x1C, 0x00, 0xAE},
-    0x80,
+    0x00,
     { 0x01, 0x00, 0x00},
     0x00, 0x00,
     { 0x00, 0x00},
@@ -228,7 +278,7 @@ seitenHeaderStc =
     0x04,
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
     0x00,
-    { 0x00, 0x00, 0x00, 0x00, 0x00},
+    { 0x00, 0x01, 0x00, 0x00, 0x00},
     0x00
 };
 
@@ -292,7 +342,7 @@ blockHeaderStc =
     { 0x1B, 0x52},
     0x03,
     { 0x08, 0x00, 0xAD},
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x50, 0x03, 0x00
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x53, 0x03, 0x00
 };
 
 unsigned char *blockHeader = (unsigned char *) &blockHeaderStc;
@@ -497,7 +547,7 @@ encodeToBlockBuffer (int colorID)
     rle64 = floor ((double) (stFeld[colorID].rleCount) / 64);
     rle1 = (stFeld[colorID].rleCount) - (rle64 * 64);
 
-    if (rle64 > 63) {
+    if (model == M2400W && rle64 > 63) {
         rleOut[0] = 224;
 	rleOut[1] = stFeld[colorID].lastByte;
 	for (z = 0; z < 2; z++) {
@@ -588,7 +638,8 @@ doEncode (int inByte, int colorID)
     if (saveToner > 0) {
 	/* spar Toner indem es jedes 2te bit loescht. */
 	/* die loeschung erfolgt pro zeile versetzt (schachbrettmuster) */
-	if ((stFeld[colorID].bytesIn + 1) > (resBreite / 8)) {
+	if ((model != M2400W && (stFeld[colorID].linesOut % 2 > 0)) ||
+	   (model == M2400W && ((stFeld[colorID].bytesIn + 1) > (resBreite / 8)))) {
 	    if (verb > 0) {
 		/* zaehlen der gesparten pixel */
 		pix[colorID][2] +=
@@ -624,7 +675,7 @@ doEncode (int inByte, int colorID)
     stFeld[colorID].indexEncBuffer++;
 
 
-    if ((stFeld[colorID].bytesIn + 1) > (2 * (resBreite / 8))) {
+    if ((stFeld[colorID].bytesIn + 1) > ((model == M2400W ? 2 : 1) * (resBreite / 8))) {
 	/* eine zeile ist voll. den rest im buffer codieren */
 
 	encodeToBlockBuffer (colorID);
@@ -632,7 +683,7 @@ doEncode (int inByte, int colorID)
 	stFeld[colorID].rleCount = 0;
 	/* wenn die anzahl der zeilen f|r einen block erreicht ist muss der blockheader generiert werden */
 	/* dies kann erst jetzt geschehen, da die anzahl der im block befindlichen bytes im header steht */
-	if (stFeld[colorID].linesOut >= (linesPerBlock / 2)) {
+	if (stFeld[colorID].linesOut >= (linesPerBlock / (model == M2400W ? 2 : 1))) {
 	    int psr;
 	    stFeld[colorID].blocksOut++;
 	    if (verb > 4)
@@ -893,7 +944,7 @@ readPkmraw (void)
 		if (verb > 1)
 		    fprintf (stderr, "--------------- Switch to Black and White !\n");
 		
-		thisSiteColorMode=0x80;
+		thisSiteColorMode=(model == M2300W) ? 0x00 : 0x80;
 		thisSiteBlocksPerPage=0x08;
 		headerCount=headerCount-24;
 		siteInitHeaderCount = headerCount;
@@ -1030,10 +1081,16 @@ readPkmraw (void)
 	    for (shz = 0; shz < leadLines; shz++) {	/* vorschleife fuer fehlende hohenzeilen */
 		for (sbz = 0; sbz < (resBreite / 8); sbz++) {
 		    if (colorMode == 0xf0) {
-			prepDoEncode (0x00, colorKey[ccs]);
+		        if (model == M2300W)
+		            doEncode (0x00, colorKey[ccs]);
+		        else
+			    prepDoEncode (0x00, colorKey[ccs]);
 		    }
 		    else {
-			prepDoEncode (0x00, colorKey[3]);
+		        if (model == M2300W)
+		            doEncode (0x00, colorKey[3]);
+		        else
+			    prepDoEncode (0x00, colorKey[3]);
 		    }
 		}
 	    }
@@ -1063,10 +1120,16 @@ readPkmraw (void)
 			     leadPixBytes);
 		for (sbz = 0; sbz < leadPixBytes; sbz++) {
 		    if (colorMode == 0xf0) {
-			prepDoEncode (0x00, colorKey[ccs]);
+		        if (model == M2300W)
+		            doEncode (0x00, colorKey[ccs]);
+		        else
+			    prepDoEncode (0x00, colorKey[ccs]);
 		    }
 		    else {
-			prepDoEncode (0x00, colorKey[3]);
+		        if (model == M2300W)
+		            doEncode (0x00, colorKey[3]);
+		        else
+			    prepDoEncode (0x00, colorKey[3]);
 		    }
 		}
 
@@ -1104,10 +1167,16 @@ readPkmraw (void)
                             pix[ccs][0]++;
                         if (c & 0x01)
                             pix[ccs][0]++;
-			prepDoEncode (c, colorKey[ccs]);
+                        if (model == M2300W)
+                            doEncode (c, colorKey[ccs]);
+                        else
+			    prepDoEncode (c, colorKey[ccs]);
 		    }
 		    else {
-			prepDoEncode (c, colorKey[3]);
+		        if (model == M2300W)
+		            doEncode (c, colorKey[3]);
+		        else
+			    prepDoEncode (c, colorKey[3]);
 		    }
 		}
 		else {
@@ -1141,10 +1210,16 @@ readPkmraw (void)
 			     trailPixBytes);
 		for (sbz = 0; sbz < trailPixBytes; sbz++) {
 		    if (colorMode == 0xf0) {
-			prepDoEncode (0x00, colorKey[ccs]);
+		        if (model == M2300W)
+		            doEncode (0x00, colorKey[ccs]);
+		        else
+			    prepDoEncode (0x00, colorKey[ccs]);
 		    }
 		    else {
-			prepDoEncode (0x00, colorKey[3]);
+		        if (model == M2300W)
+		            doEncode (0x00, colorKey[3]);
+		        else
+			    prepDoEncode (0x00, colorKey[3]);
 		    }
 		}
 
@@ -1180,10 +1255,16 @@ readPkmraw (void)
 	    for (shz = 0; shz < trailLines; shz++) {	/* endschleife fuer fehlende hohenzeilen */
 		for (sbz = 0; sbz < (resBreite / 8); sbz++) {
 		    if (colorMode == 0xf0) {
-			prepDoEncode (c, colorKey[ccs]);
+		        if (model == M2300W)
+		            doEncode (c, colorKey[ccs]);
+		        else
+			    prepDoEncode (c, colorKey[ccs]);
 		    }
 		    else {
-			prepDoEncode (c, colorKey[3]);
+		        if (model == M2300W)
+		            doEncode (c, colorKey[3]);
+		        else
+			    prepDoEncode (c, colorKey[3]);
 		    }
 		}
 	    }
@@ -1233,6 +1314,22 @@ main (int argc, char *argv[])
     int pageOutSize;
     int lineBufferSize;
     long psr;
+    char *prog_name;
+
+    prog_name = basename(argv[0]);
+    if (!strcmp(prog_name, "m2300w")) {
+        model = M2300W;
+        form = form_2300;
+    } else if (!strcmp(prog_name, "m2400w")) {
+        model = M2400W;
+        form = form_2400;
+        fileHeader[6] = 0x85;
+        fileHeader[8] = 0xB1;
+        jobHeaderStc.res2 = 0x01;
+        seitenHeaderStc.colorMode = 0x80;
+        seitenHeaderStc.seitenHeaderT7[1] = 0x00;
+        blockHeaderStc.linesPerBlock1 = 0x50;
+    }
 
 /* 1. parameter lesen */
 
@@ -1252,7 +1349,7 @@ main (int argc, char *argv[])
 	case 'c':
 	    if (optarg[0] == '1') {
 		blocksPerPage = 0x08;
-		colorMode = 0x80;
+		colorMode = (model == M2300W) ? 0x00 : 0x80;
 	    }
 	    else if (optarg[0] == '2') {
 		blocksPerPage = 0x20;
@@ -1291,10 +1388,10 @@ main (int argc, char *argv[])
 	    else if (ResXmul == 2) {
 		if (verb > 1)
 		    fprintf (stderr, "Aufloesung 1200dpi\n");
-		jobHeaderStc.res1 = 0x01;
+		jobHeaderStc.res1 = (model == M2300W) ? 0x02 : 0x01;
 		jobHeaderStc.res2 = 0x01;
 	    }
-	    else if (ResXmul == 3) {
+	    else if (model == M2400W && ResXmul == 3) {
 		if (verb > 1)
 		    fprintf (stderr, "Aufloesung 2400dpi\n");
 		jobHeaderStc.res1 = 0x01;
@@ -1369,9 +1466,13 @@ main (int argc, char *argv[])
 
 
     /* speicher reservieren */
-
-    encBufferSize = (2 * (resBreite / 8)) + 150;	/* enthaelt im allgemeinen nur eine zeile (kleine zugabe die gleichzeitig die header abdeckt ;-) */
-    blockBufferSize = ((resBreite / 8) + 150) * linesPerBlock;	/* einhaelt die zeilen mal anzahl zeilen pro block */
+    if (model == M2300W) {
+        encBufferSize = (resBreite / 8) + 150;	/* enthaelt im allgemeinen nur eine zeile (kleine zugabe die gleichzeitig die header abdeckt ;-) */
+        blockBufferSize = encBufferSize * linesPerBlock;	/* einhaelt die zeilen mal anzahl zeilen pro block */
+    } else {
+        encBufferSize = (2 * (resBreite / 8)) + 150;	/* enthaelt im allgemeinen nur eine zeile (kleine zugabe die gleichzeitig die header abdeckt ;-) */
+        blockBufferSize = ((resBreite / 8) + 150) * linesPerBlock;	/* einhaelt die zeilen mal anzahl zeilen pro block */
+    }
     pageOutSize = blockBufferSize * 8;	/* enthaelt 8 bloecke */
     lineBufferSize = encBufferSize;
 
