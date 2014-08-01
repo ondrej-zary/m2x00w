@@ -454,7 +454,6 @@ void write_block(unsigned char block_type, void *data, unsigned char data_len, F
 void
 encodeToBlockBuffer (int colorID, struct steuerFelder *stFeld)
 {
-    int z;
     long rohBytes = stFeld->indexEncBuffer - stFeld->rleCount;
     int rle64, rle1;
     void *encBuffer = stFeld->encBuffer;
@@ -477,18 +476,17 @@ encodeToBlockBuffer (int colorID, struct steuerFelder *stFeld)
 
     /* rle verarbeiten */
 
+    if (stFeld->rleCount >= 4096) {
+        /* encode 4096B run as two 2048B runs (happens only on 2400W at 2400dpi) */
+        stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 0xe0;
+        stFeld->blockBuffer[stFeld->indexBlockBuffer++] = stFeld->lastByte;
+        stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 0xe0;
+        stFeld->blockBuffer[stFeld->indexBlockBuffer++] = stFeld->lastByte;
+        stFeld->rleCount -= 4096;
+    }
+
     rle64 = stFeld->rleCount / 64;
     rle1 = (stFeld->rleCount) - (rle64 * 64);
-
-    if (model == M2400W && rle64 > 63) {
-	for (z = 0; z < 2; z++) { ///// BUG?
-	    stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 224;
-	    stFeld->blockBuffer[stFeld->indexBlockBuffer++] = stFeld->lastByte;
-	    DBG(5, "---->64er RLE Encoding: 2048 mal %.2x - codiert als: %.2x%.2x\n", stFeld->lastByte);
-	    hex_dump(5, "64er RLE::\n", &stFeld->blockBuffer[stFeld->indexBlockBuffer - 2], 2);
-	}
-    	rle64 -= 64;
-    }
 
     if (rle64 > 0) {
 	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 192 + rle64;
