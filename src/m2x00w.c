@@ -84,7 +84,7 @@ struct header {
 #define M2X00W_BLOCK_END	0x41
 
 struct block_begin {
-    unsigned char model;
+    unsigned char model;	/* 0x82 = 2300W, 0x85 = 2400W, 0x87 = 2500W */
     unsigned char color;	/* 0x10 */
 } __attribute__((packed));
 
@@ -92,14 +92,14 @@ struct block_params {
     unsigned char res_y;	/* 00=300dpi, 01=600dpi, 02=1200dpi */
     unsigned char res_x;	/* 00=res_y, 01=2*res_y, 02=4*res_y */
     unsigned char zero;
-    unsigned char paper_weight;
+    unsigned char paper_weight; ///// ???
     unsigned char interleave;
     unsigned char zeros[3];
 } __attribute__((packed));
 
 struct block_startpage {
-    unsigned char color;
-    unsigned char copies;	/* number of copies */
+    unsigned char color;	/* 0xF0 = color, 0x80 = BW (2400W/2500W), 0x00 = BW (2300W) */
+    unsigned char copies;	/* number of copies (only 2500W, always 01 for 2300W/2400W) */
     unsigned short x_start;
     unsigned short x_end;
     unsigned short y_start;
@@ -110,11 +110,14 @@ struct block_startpage {
     unsigned char zero2;
     unsigned char tray;
     unsigned char paper_size;
-    unsigned char zeros1[6];
-    unsigned char paper_weight;
+    unsigned short custom_width;/* custom size - width in mm */
+    unsigned short custom_height;/* custom size - height in mm */
     unsigned char zero3;
-    unsigned char unknown;	/* 01 for M2300W, else 00 */
-    unsigned char zeros2[3];
+    unsigned char duplex;	/* 0x80 = duplex on (2300W only)*/
+    unsigned char paper_weight;
+    unsigned char zero4;
+    unsigned char unknown;	/* 01 for 2300W or ???, else 00 */
+    unsigned char zeros[3];
 } __attribute__((packed));
 
 struct block_data {
@@ -131,6 +134,58 @@ struct format
     int resY;
 };
 
+/*
+2300W:
+ 0x04: A4
+ 0x06: B5 (JIS)
+ 0x08: A5
+ 0x0C: Japanese postcard
+ 0x12: folio
+ 0x19: legal
+ 0x1A: government legal
+ 0x1B: letter
+ 0x1F: executive
+ 0x21: statement
+ 0x24: envelope monarch
+ 0x25: envelope COM10
+ 0x26: envelope DL
+ 0x27: envelope C5
+ 0x28: envelope C6
+ 0x29: B5 (ISO)
+ 0x31: CUSTOM (+foolscap + kai 16 + kai 32 + letter plus + uk quarto)
+
+
+2500W:
+ 0x04: A4
+ 0x06: B5 (JIS)
+ 0x08: A5
+ 0x0C: J postcard
+ 0x0D: double postcard
+ 0x0F: envelope You #4
+ 0x12: folio
+ 0x15: Kai-32
+ 0x19: legal
+ 0x1A: G.legal
+ 0x1B: letter
+ 0x1D: G.letter
+ 0x1F: executive
+ 0x21: statement
+ 0x24: envelope monarch
+ 0x25: envelope COM10
+ 0x26: envelope DL
+ 0x27: envelope C5
+ 0x28: envelope C6
+ 0x29: B5 (ISO)
+ 0x2D: envelope Chou #3
+ 0x2E: envelope Chou #4
+ 0x31: CUSTOM
+ 0x46: foolscap
+ 0x51: 16K
+ 0x52: Kai-16
+ 0x53: letter plus
+ 0x54: UK quarto
+ 0x65: photo 10x15 = photo 4x6"
+ */
 struct format form_2300[42] = {
 /* 0*/ {"", 0, 0},
 /* 1*/ {"", 0, 0},
@@ -248,7 +303,7 @@ struct media med[] = {
 /* 5*/ {"Postcard"},
 /* 6*/ {"Label"},
 /* 7*/ {""},
-/* 8*/ {"Glossy"},
+/* 8*/ {"Glossy"},	/* 2500W only */
 };
 
 struct steuerFelder
