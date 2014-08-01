@@ -91,10 +91,7 @@ struct block_begin {
 struct block_params {
     unsigned char res_y;	/* 00=300dpi, 01=600dpi, 02=1200dpi */
     unsigned char res_x;	/* 00=res_y, 01=2*res_y, 02=4*res_y */
-    unsigned char zero;
-    unsigned char paper_weight; ///// ???
-    unsigned char interleave;
-    unsigned char zeros[3];
+    unsigned char zeros[6];
 } __attribute__((packed));
 
 struct block_page {
