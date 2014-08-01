@@ -393,51 +393,24 @@ encodeToBlockBuffer (int colorID, struct steuerFelder *stFeld)
 {
     int z;
     long rohBytes = stFeld->indexEncBuffer - stFeld->rleCount;
-    int rohByteCount = 0;
     unsigned char rleOut[2];
     int rle64, rle1;
+    void *encBuffer = stFeld->encBuffer;
 
     DBG(5, "--> Ausgabe von %.3i Bytes fuer colorID %i davon %.3i Rohbytes und %.3i mal %.2x RLE encoded am Ende.\n",
 	(int) stFeld->indexEncBuffer, (int) colorID, (int) rohBytes, (int) stFeld->rleCount, stFeld->lastByte);
     hex_dump(5, "Daten fuer Encoder:\n", stFeld->encBuffer, stFeld->indexEncBuffer);
-    /* rohbytes verarbeiten */
-    /* 64er stufe */
-    while ((rohBytes - (rohByteCount * 64)) >= 64) {
-	unsigned char rBOut[65];
-	DBG(5, "Segment mit 64 Bytes ausgeben ...");
-	/* header belegen (standardwert) */
-	rBOut[0] = (char) (64 - 1);
-	memcpy (&rBOut[1], &stFeld->encBuffer[(rohByteCount * 64)],
-		64);
-	memcpy (&stFeld->
-		blockBuffer[stFeld->indexBlockBuffer], &rBOut[0], 65);
-	stFeld->indexBlockBuffer += 65;
-	rohByteCount++;
+    /* uncompressed bytes */
+    while (rohBytes > 0) {
+	unsigned char chunk = (rohBytes > 64) ? 64 : rohBytes;
+	DBG(5, "Segment mit %d Bytes ausgeben ...", chunk);
+	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = chunk - 1;
+	memcpy (&stFeld->blockBuffer[stFeld->indexBlockBuffer], encBuffer, chunk);
+	encBuffer += chunk;
+	rohBytes -= chunk;
+	stFeld->indexBlockBuffer += chunk;
 	DBG(5, "OK\n");
-	hex_dump(5, "Rohbytes:\n", rBOut, 65);
-    }
-    if ((rohBytes - (rohByteCount * 64)) > 0) {
-	/* XXX */
-	/* unsigned char rBOut[rohBytes - (64 * rohByteCount) + 1]; */
-	unsigned char *rBOut = malloc(rohBytes - (64 * rohByteCount) + 1);
-
-	/* einzelstufe */
-	DBG(5, "Segment mit %i Bytes ausgeben ...", (int) (rohBytes - (64 * rohByteCount)));
-
-	/* header belegen */
-	rBOut[0] = (char) ((rohBytes - (64 * rohByteCount)) - 1);
-	memcpy (&rBOut[1], &stFeld->encBuffer[(rohByteCount * 64)],
-		(rohBytes - (64 * rohByteCount)));
-	memcpy (&stFeld->
-		blockBuffer[stFeld->indexBlockBuffer], &rBOut[0],
-		(rohBytes + 1 - (64 * rohByteCount)));
-	stFeld->indexBlockBuffer +=
-	    (rohBytes - (64 * rohByteCount) + 1);
-	DBG(5, "OK\n");
-	hex_dump(5, "Rohbytes:\n", rBOut, rohBytes - (64 * rohByteCount));
-
-	/* XXX */
-	free(rBOut);
+	hex_dump(5, "Rohbytes:\n", &stFeld->blockBuffer[stFeld->indexBlockBuffer - chunk - 1], chunk + 1);
     }
 
     /* rle verarbeiten */
