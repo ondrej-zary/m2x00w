@@ -253,7 +253,7 @@ struct
     unsigned char seitenHeaderT7[5];
     unsigned char prSum;
 }
-seitenHeader =
+page_header =
 {
     { 0x1B, 0x51} ,
     0x02,
@@ -752,23 +752,23 @@ void
 writePageHeader (void)
 {
     /* seitenHeader ausgeben */
-    seitenHeader.headerCount = reservedHeaderCountSH;
-    seitenHeader.breite1 = (unsigned char) resBreite;
-    seitenHeader.breite2 = (unsigned char) (resBreite >> 8);
-    seitenHeader.hoehe1 = (unsigned char) resHoehe;
-    seitenHeader.hoehe2 = (unsigned char) (resHoehe >> 8);
-    seitenHeader.colorMode = thisPageColorMode;
-    seitenHeader.blocksPerPage1 = thisPageBlocksPerPage;
-    seitenHeader.blocksPerPage2 = thisPageBlocksPerPage;
+    page_header.headerCount = reservedHeaderCountSH;
+    page_header.breite1 = (unsigned char) resBreite;
+    page_header.breite2 = (unsigned char) (resBreite >> 8);
+    page_header.hoehe1 = (unsigned char) resHoehe;
+    page_header.hoehe2 = (unsigned char) (resHoehe >> 8);
+    page_header.colorMode = thisPageColorMode;
+    page_header.blocksPerPage1 = thisPageBlocksPerPage;
+    page_header.blocksPerPage2 = thisPageBlocksPerPage;
 
-    seitenHeader.paperFormat = PaperCode;
-    seitenHeader.paperQuality = MediaCode;
+    page_header.paperFormat = PaperCode;
+    page_header.paperQuality = MediaCode;
 
-    seitenHeader.prSum = checksum(&seitenHeader, sizeof(seitenHeader) - 1);
-    fwrite(&seitenHeader, 1, sizeof(seitenHeader), out_stream);
+    page_header.prSum = checksum(&page_header, sizeof(page_header) - 1);
+    fwrite(&page_header, 1, sizeof(page_header), out_stream);
 
     if (verb > 4)
-	hex_dump("Seitenheader: ", &seitenHeader, sizeof(seitenHeader));
+	hex_dump("Seitenheader: ", &page_header, sizeof(page_header));
 }
 
 
@@ -1254,8 +1254,8 @@ main (int argc, char *argv[])
         fileHeader[6] = 0x85;
         fileHeader[8] = 0xB1;
         jobHeader.res2 = 0x01;
-        seitenHeader.colorMode = 0x80;
-        seitenHeader.seitenHeaderT7[1] = 0x00;
+        page_header.colorMode = 0x80;
+        page_header.seitenHeaderT7[1] = 0x00;
         blockHeader.linesPerBlock1 = 0x50;
     }
 
