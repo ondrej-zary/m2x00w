@@ -460,17 +460,6 @@ void hex_dump(char *title, void *p, int length)
 }
 
 void
-writeOut (FILE * ziel, void *vquelle, long length)
-{
-    int oByte;
-    char *quelle = vquelle;
-
-    for (oByte = 0; oByte < length; oByte++) {
-	fputc (quelle[oByte], ziel);
-    }
-}
-
-void
 encodeToBlockBuffer (int colorID)
 {
     int z;
@@ -751,12 +740,12 @@ clearBuffer (int i)
 void
 writeJobHeader (void)
 {
-    writeOut (out_stream, fileHeader, sizeof(fileHeader));
+    fwrite(fileHeader, 1, sizeof(fileHeader), out_stream);
     headerCount++;
 
     jobHeader.prSum = checksum(&jobHeader, sizeof(jobHeader) - 1);
 
-    writeOut (out_stream, &jobHeader, sizeof(jobHeader));
+    fwrite(&jobHeader, 1, sizeof(jobHeader), out_stream);
     headerCount++;
     if (verb > 1)
 	fprintf (stderr, "JobHeader written.\n");
@@ -779,7 +768,7 @@ writeSiteHeader (void)
     seitenHeader.paperQuality = MediaCode;
 
     seitenHeader.prSum = checksum(&seitenHeader, sizeof(seitenHeader) - 1);
-    writeOut (out_stream, &seitenHeader, sizeof(seitenHeader));
+    fwrite(&seitenHeader, 1, sizeof(seitenHeader), out_stream);
 
     if (verb > 4)
 	hex_dump("Seitenheader: ", &seitenHeader, sizeof(seitenHeader));
@@ -837,17 +826,14 @@ readPkmraw (void)
 		fprintf (stderr, "###Seitenheader geschrieben\n");
 
 	    if (thisSiteColorMode == 0xf0) {
-		writeOut (out_stream, stFeld[3].pageOut,
-			  stFeld[3].indexPageOut);
-		writeOut (out_stream, stFeld[2].pageOut,
-			  stFeld[2].indexPageOut);
-		writeOut (out_stream, stFeld[1].pageOut,
-			  stFeld[1].indexPageOut);
+		fwrite(stFeld[3].pageOut, 1, stFeld[3].indexPageOut, out_stream);
+		fwrite(stFeld[2].pageOut, 1, stFeld[2].indexPageOut, out_stream);
+		fwrite(stFeld[1].pageOut, 1, stFeld[1].indexPageOut, out_stream);
 		clearBuffer (1);
 		clearBuffer (2);
 		clearBuffer (3);
 	    }
-	    writeOut (out_stream, stFeld[0].pageOut, stFeld[0].indexPageOut);
+	    fwrite(stFeld[0].pageOut, 1, stFeld[0].indexPageOut, out_stream);
 	    clearBuffer (0);
 
 	    ccs = 0;
@@ -1224,11 +1210,11 @@ readPkmraw (void)
 	fprintf (stderr, "###Seitenheader geschrieben\n");
 
     if (thisSiteColorMode == 0xf0) {
-	writeOut (out_stream, stFeld[3].pageOut, stFeld[3].indexPageOut);
-	writeOut (out_stream, stFeld[2].pageOut, stFeld[2].indexPageOut);
-	writeOut (out_stream, stFeld[1].pageOut, stFeld[1].indexPageOut);
+	fwrite(stFeld[3].pageOut, 1, stFeld[3].indexPageOut, out_stream);
+	fwrite(stFeld[2].pageOut, 1, stFeld[2].indexPageOut, out_stream);
+	fwrite(stFeld[1].pageOut, 1, stFeld[1].indexPageOut, out_stream);
     }
-    writeOut (out_stream, stFeld[0].pageOut, stFeld[0].indexPageOut);
+    fwrite(stFeld[0].pageOut, 1, stFeld[0].indexPageOut, out_stream);
     if (verb > 1)
 	fprintf (stderr, "###Seiteninhalt geschrieben\n");
 
@@ -1455,11 +1441,11 @@ main (int argc, char *argv[])
 	/* footer ausgeben */
 	jobFooter.headerCount = headerCount++;
 	jobFooter.prSum = checksum(&jobFooter, sizeof(jobFooter) - 1);
-	writeOut (out_stream, &jobFooter, sizeof(jobFooter));
+	fwrite(&jobFooter, 1, sizeof(jobFooter), out_stream);
 
 	fileFooter.headerCount = headerCount++;
 	fileFooter.prSum = checksum(&fileFooter, sizeof(fileFooter) - 1);
-	writeOut (out_stream, &fileFooter, sizeof(fileFooter));
+	fwrite(&fileFooter, 1, sizeof(fileFooter), out_stream);
 	if (verb > 1)
 	    fprintf (stderr, "JobFooter written.\n");
     }
