@@ -11,4 +11,4 @@ It prints with 2500W but it's far from perfect:
  - artifacts are present around black objects in color mode
  - it still uses the foomatic crap
 
-A rewrite for CUPS is planned: m2x00w-cups
+A rewrite for CUPS is planned: m2x00w-cups - https://github.com/ondrej-zary/m2x00w-cups
