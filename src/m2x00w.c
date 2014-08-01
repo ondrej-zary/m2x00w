@@ -26,13 +26,15 @@
 #include <string.h>
 #include <libgen.h>
 
+#define cpu_to_le16(x) (x)
+
 FILE *in_stream, *out_stream;
 
 int verb = 0;			/* verbose level */
 
 #define DBG(level, fmt, args ...)	if (verb > level) fprintf(stderr, fmt, ##args);
 
-enum m2x00w_model { M2300W, M2400W };
+enum m2x00w_model { M2300W = 0x82, M2400W = 0x85 };
 enum m2x00w_model model;
 int MediaCode = 0;
 int PaperCode = 4;
@@ -56,6 +58,28 @@ int reservedHeaderCountSH =0;   /* reservierter HeaderCount fuer den Seitenheade
 long pix[4] = { 0, 0, 0, 0 };	/* pixel counter (C,M,Y,K) */
 
 void (*encode)(int inByte, int colorID);
+
+#define M2X00W_MAGIC		0x1B
+struct header {
+    unsigned char magic;	/* 0x1B */
+    unsigned char type;		/* block type */
+    unsigned char seq;		/* block sequence number */
+    unsigned short len;		/* data length (little endian) */
+    unsigned char type_inv;	/* type ^ 0xff */
+    unsigned char data[0];
+} __attribute__((packed));
+
+#define M2X00W_BLOCK_BEGIN	0x40
+#define M2X00W_BLOCK_PARAMS	0x50
+#define M2X00W_BLOCK_STARTPAGE	0x51
+#define M2X00W_BLOCK_DATA	0x52
+#define M2X00W_BLOCK_ENDPAGE	0x55
+#define M2X00W_BLOCK_END	0x41
+
+struct block_begin {
+    unsigned char model;
+    unsigned char color;	/* 0x10 */
+} __attribute__((packed));
 
 struct format
 {
@@ -181,8 +205,6 @@ struct media med[7] = {
 /* 5*/ {"Postkarte"},
 /* 6*/ {"Etikette"},
 };
-
-unsigned char fileHeader[] = { 0x1B, 0x40, 0x00, 0x02, 0x00, 0xBF, 0x82, 0x10, 0xAE };
 
 struct
 {
@@ -410,6 +432,23 @@ void hex_dump(int level, char *title, void *p, int length)
 	    }
 	    fprintf (stderr, "\n");
     }
+}
+
+void write_block(unsigned char block_type, void *data, unsigned char data_len, FILE *stream)
+{
+    struct header header;
+    unsigned char sum;
+
+    header.magic = M2X00W_MAGIC;
+    header.type = block_type;
+    header.seq = headerCount++;
+    header.len = cpu_to_le16(data_len);
+    header.type_inv = block_type ^ 0xff;
+    fwrite(&header, 1, sizeof(header), stream);
+    fwrite(data, 1, data_len, stream);
+
+    sum = checksum(&header, sizeof(header)) + checksum(data, data_len);
+    fwrite(&sum, 1, sizeof(sum), stream);
 }
 
 void
@@ -645,8 +684,8 @@ clearBuffer (int i)
 void
 writeJobHeader (void)
 {
-    fwrite(fileHeader, 1, sizeof(fileHeader), out_stream);
-    headerCount++;
+    struct block_begin begin = { .model = model, .color = 0x10 };
+    write_block(M2X00W_BLOCK_BEGIN, &begin, sizeof(begin), out_stream);
 
     jobHeader.prSum = checksum(&jobHeader, sizeof(jobHeader) - 1);
 
@@ -1049,8 +1088,6 @@ main (int argc, char *argv[])
         model = M2400W;
         form = form_2400;
         encode = prepDoEncode;
-        fileHeader[6] = 0x85;
-        fileHeader[8] = 0xB1;
         jobHeader.res2 = 0x01;
         page_header.colorMode = 0x80;
         page_header.seitenHeaderT7[1] = 0x00;
