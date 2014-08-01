@@ -53,12 +53,7 @@ int headerCount = 0;		/* zaehler fuer alle header */
 int siteInitHeaderCount = 0;	/* zaehler fuer alle header */
 int reservedHeaderCountSH =0;   /* reservierter HeaderCount fuer den Seitenheader da dieser erst spaeter verwendet wird */
 
-long pix[4][3] = {		/* pixel, ucr , tonerSave */
-    {0, 0, 0},			/* cyan	*/
-    {0, 0, 0},			/* magenta */
-    {0, 0, 0},			/* yellow */
-    {0, 0, 0},			/* schwarz */
-};
+long pix[4] = { 0, 0, 0, 0 };	/* pixel counter (C,M,Y,K) */
 
 struct format
 {
@@ -540,20 +535,9 @@ doEncode (int inByte, int colorID)
 	/* die loeschung erfolgt pro zeile versetzt (schachbrettmuster) */
 	if ((model != M2400W && (stFeld[colorID].linesOut % 2 > 0)) ||
 	   (model == M2400W && ((stFeld[colorID].bytesIn + 1) > (resBreite / 8)))) {
-	    if (verb > 0) {
-		/* zaehlen der gesparten pixel */
-		pix[colorID][2] +=
-		    ((inByte) & 0x01) + ((inByte >> 2) & 0x01) +
-		    ((inByte >> 4) & 0x01) + ((inByte >> 6) & 0x01);
-	    }
 	    inByte = inByte & 0xaa;
 	}
 	else {
-	    if (verb > 0) {
-		pix[colorID][2] +=
-		    ((inByte >> 1) & 0x01) + ((inByte >> 3) & 0x01) +
-		    ((inByte >> 5) & 0x01) + ((inByte >> 7) & 0x01);
-	    }
 	    inByte = inByte & 0x55;
 	}
     }
@@ -763,11 +747,11 @@ readPkmraw (void)
 	    ccs = 0;
 	    DBG(1, "###Seiteninhalt geschrieben\n");
 	    DBG(1, "Farbverteilung der Seite:\nYellow:  %8d\nMagenta: %8d\nCyan:    %8d\nBlack:   %8d\n",
-		pix[0][0],pix[1][0],pix[2][0],pix[3][0]);
-	    pix[0][0]=0;
-	    pix[1][0]=0;
-	    pix[2][0]=0;
-	    pix[3][0]=0;
+		pix[0],pix[1],pix[2],pix[3]);
+	    pix[0]=0;
+	    pix[1]=0;
+	    pix[2]=0;
+	    pix[3]=0;
 
 
 
@@ -788,7 +772,7 @@ readPkmraw (void)
 	DBG(1, "Beginne neue Farbe\n");
 	
 	if(ccs>2) {
-	    if(pix[0][0]==0 && pix[1][0]==0 && pix[2][0]==0) {
+	    if(pix[0]==0 && pix[1]==0 && pix[2]==0) {
 		DBG(1, "--------------- Switch to Black and White !\n");
 		
 		thisPageColorMode=(model == M2300W) ? 0x00 : 0x80;
@@ -964,21 +948,21 @@ readPkmraw (void)
 		    if (colorMode == 0xf0) {
 			/* hier die pixel zaehlen um s/w seiten zu erkennen */
                         if (c & 0x80)
-                            pix[ccs][0]++;
+                            pix[ccs]++;
                         if (c & 0x40)
-                            pix[ccs][0]++;
+                            pix[ccs]++;
                         if (c & 0x20)
-                            pix[ccs][0]++;
+                            pix[ccs]++;
                         if (c & 0x10)
-                            pix[ccs][0]++;
+                            pix[ccs]++;
                         if (c & 0x08)
-                            pix[ccs][0]++;
+                            pix[ccs]++;
                         if (c & 0x04)
-                            pix[ccs][0]++;
+                            pix[ccs]++;
                         if (c & 0x02)
-                            pix[ccs][0]++;
+                            pix[ccs]++;
                         if (c & 0x01)
-                            pix[ccs][0]++;
+                            pix[ccs]++;
                         if (model == M2300W)
                             doEncode (c, colorKey[ccs]);
                         else
@@ -1081,12 +1065,12 @@ readPkmraw (void)
     DBG(1, "###Seiteninhalt geschrieben\n");
 
     DBG(1, "Farbverteilung der Seite:\nYellow:  %8d\nMagenta: %8d\nCyan:    %8d\nBlack:   %8d\n",
-	pix[0][0],pix[1][0],pix[2][0],pix[3][0]);
+	pix[0],pix[1],pix[2],pix[3]);
 
-    pix[0][0]=0;
-    pix[1][0]=0;
-    pix[2][0]=0;
-    pix[3][0]=0;
+    pix[0]=0;
+    pix[1]=0;
+    pix[2]=0;
+    pix[3]=0;
 
 }
 
