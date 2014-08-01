@@ -263,35 +263,6 @@ page_header =
 
 struct
 {
-    unsigned char jobFooterT1[2];
-    unsigned char headerCount;
-    unsigned char jobFooterT2[4];
-    unsigned char prSum;
-}
-jobFooter =
-{
-    { 0x1B, 0x55},
-    0x02,
-    { 0x01, 0x00, 0xAA, 0x00},
-    0x00
-};
-
-struct {
-    unsigned char fileFooterT1[2];
-    unsigned char headerCount;
-    unsigned char fileFooterT2[4];
-    unsigned char prSum;
-}
-fileFooter =
-{
-    { 0x1B, 0x41},
-    0x00,
-    { 0x01, 0x00, 0xBE, 0x00},
-    0x00
-};
-
-struct
-{
     unsigned char blockHeaderT1[2];
     unsigned char headerCount;
     /* headerzaehler 0x?? */
@@ -1245,14 +1216,10 @@ main (int argc, char *argv[])
     /* readBit(); */
 
     if (jobHeaderWritten == 1) {
-	/* footer ausgeben */
-	jobFooter.headerCount = headerCount++;
-	jobFooter.prSum = checksum(&jobFooter, sizeof(jobFooter) - 1);
-	fwrite(&jobFooter, 1, sizeof(jobFooter), out_stream);
+	unsigned char zero = 0;
 
-	fileFooter.headerCount = headerCount++;
-	fileFooter.prSum = checksum(&fileFooter, sizeof(fileFooter) - 1);
-	fwrite(&fileFooter, 1, sizeof(fileFooter), out_stream);
+	write_block(M2X00W_BLOCK_ENDPAGE, &zero, sizeof(zero), out_stream);///// BUG?
+	write_block(M2X00W_BLOCK_END, &zero, sizeof(zero), out_stream);
 	DBG(1, "JobFooter written.\n");
     }
 
