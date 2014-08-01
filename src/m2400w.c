@@ -88,7 +88,7 @@ struct format
     int mediaMustBe;
 };
 
-struct format form[42] = {                      /* AENDERUNGEN */
+struct format form[42] = {
 /* 0*/ {"no data\0", 0, 0, 0, 0, -1},
 /* 1*/ {"no data\0", 0, 0, 0, 0, -1},
 /* 2*/ {"no data\0", 0, 0, 0, 0, -1},
@@ -167,7 +167,7 @@ struct media med[7] = {
    ---------------------------------------------------------------------------*/
 
 unsigned char fileHeader[] = { 0x1B, 0x40, 0x00, 0x02, 0x00, 0xBF, 0x85, 0x10, 0xB1 };
-                                                /* AENDERUNG 0x85 */
+
  /* char jobHeader[] ={0x1B,0x50,0x01,0x08,0x00,0xAF,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x24}; */
 
 struct
@@ -181,7 +181,7 @@ struct
 jobHeaderStc =
 {
     { 0x1B, 0x50, 0x01, 0x08, 0x00, 0xAF},
-    0x01, 0x01,                              /* AENDERUNG letztes Byte 0x01 */
+    0x01, 0x01,
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
     0x00
 };
@@ -217,7 +217,7 @@ seitenHeaderStc =
     { 0x1B, 0x51} ,
     0x02,
     { 0x1C, 0x00, 0xAE},
-    0x80,                                   /* AENDERUNG 0x80 */
+    0x80,
     { 0x01, 0x00, 0x00},
     0x00, 0x00,
     { 0x00, 0x00},
@@ -228,7 +228,7 @@ seitenHeaderStc =
     0x04,
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
     0x00,
-    { 0x00, 0x00, 0x00, 0x00, 0x00},         /* AENDERUNG 2. Byte 0x00 */
+    { 0x00, 0x00, 0x00, 0x00, 0x00},
     0x00
 };
 
@@ -292,7 +292,7 @@ blockHeaderStc =
     { 0x1B, 0x52},
     0x03,
     { 0x08, 0x00, 0xAD},
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x50, 0x03, 0x00                  /* AENDERUNG 7. Byte 0x50 */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x50, 0x03, 0x00
 };
 
 unsigned char *blockHeader = (unsigned char *) &blockHeaderStc;
@@ -317,14 +317,14 @@ struct steuerFelder
     unsigned char *pageOut;
     unsigned long indexPageOut;
 
-    unsigned char *lineBuffer;                 /* AENDERUNG 2 Zeilen hinzugefuegt */
+    unsigned char *lineBuffer;
     unsigned long indexLineBuffer;
 
 };
 
 
 struct steuerFelder stFeld[4] = {
-    {0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0}, /* AENDERUNG 2 Werte hinzugefuegt */
+    {0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0},
     {0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0},
     {0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0},
     {0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0}
@@ -497,7 +497,7 @@ encodeToBlockBuffer (int colorID)
     rle64 = floor ((double) (stFeld[colorID].rleCount) / 64);
     rle1 = (stFeld[colorID].rleCount) - (rle64 * 64);
 
-    if (rle64 > 63) {					/* AENDERUNG hinzu */
+    if (rle64 > 63) {
         rleOut[0] = 224;
 	rleOut[1] = stFeld[colorID].lastByte;
 	for (z = 0; z < 2; z++) {
@@ -588,7 +588,7 @@ doEncode (int inByte, int colorID)
     if (saveToner > 0) {
 	/* spar Toner indem es jedes 2te bit loescht. */
 	/* die loeschung erfolgt pro zeile versetzt (schachbrettmuster) */
-	if ((stFeld[colorID].bytesIn + 1) > (resBreite / 8)) {                   /* AENDERUNG */
+	if ((stFeld[colorID].bytesIn + 1) > (resBreite / 8)) {
 	    if (verb > 0) {
 		/* zaehlen der gesparten pixel */
 		pix[colorID][2] +=
@@ -624,7 +624,7 @@ doEncode (int inByte, int colorID)
     stFeld[colorID].indexEncBuffer++;
 
 
-    if ((stFeld[colorID].bytesIn + 1) > (2 * (resBreite / 8))) {     /* AENDERUNG 2*  */
+    if ((stFeld[colorID].bytesIn + 1) > (2 * (resBreite / 8))) {
 	/* eine zeile ist voll. den rest im buffer codieren */
 
 	encodeToBlockBuffer (colorID);
@@ -632,7 +632,7 @@ doEncode (int inByte, int colorID)
 	stFeld[colorID].rleCount = 0;
 	/* wenn die anzahl der zeilen f|r einen block erreicht ist muss der blockheader generiert werden */
 	/* dies kann erst jetzt geschehen, da die anzahl der im block befindlichen bytes im header steht */
-	if (stFeld[colorID].linesOut >= (linesPerBlock / 2)) {   /* AENDERUNG /2 */
+	if (stFeld[colorID].linesOut >= (linesPerBlock / 2)) {
 	    int psr;
 	    stFeld[colorID].blocksOut++;
 	    if (verb > 4)
@@ -703,7 +703,7 @@ doEncode (int inByte, int colorID)
 }
 
 void
-prepDoEncode(int inByte, int colorID)                     /* AENDERUNG hinzu */
+prepDoEncode(int inByte, int colorID)
 {
     stFeld[colorID].lineBuffer[stFeld[colorID].indexLineBuffer] =  inByte;
     stFeld[colorID].indexLineBuffer += 1;
@@ -731,7 +731,7 @@ clearBuffer (int i)
     stFeld[i].lastByte = 0;
     stFeld[i].indexBlockBuffer = 0;
     stFeld[i].indexPageOut = 0;
-    stFeld[i].indexLineBuffer = 0;                 /* AENDERUNG Zeile hinzugefuegt */
+    stFeld[i].indexLineBuffer = 0;
 }
 
 void
@@ -790,7 +790,7 @@ writeSiteHeader (void)
 
 
 void
-readPkmraw (void)                                  /* AENDERUNG prepDoEncode statt doEncode */
+readPkmraw (void)
 {
 
     int c = 0;
@@ -893,7 +893,7 @@ readPkmraw (void)                                  /* AENDERUNG prepDoEncode sta
 		if (verb > 1)
 		    fprintf (stderr, "--------------- Switch to Black and White !\n");
 		
-		thisSiteColorMode=0x80;                      /* AENDERUNG 0x80 */
+		thisSiteColorMode=0x80;
 		thisSiteBlocksPerPage=0x08;
 		headerCount=headerCount-24;
 		siteInitHeaderCount = headerCount;
@@ -1231,7 +1231,7 @@ main (int argc, char *argv[])
     int encBufferSize;
     int blockBufferSize;
     int pageOutSize;
-    int lineBufferSize;                     /* AENDERUNG hinzu */
+    int lineBufferSize;
     long psr;
 
 /* 1. parameter lesen */
@@ -1252,7 +1252,7 @@ main (int argc, char *argv[])
 	case 'c':
 	    if (optarg[0] == '1') {
 		blocksPerPage = 0x08;
-		colorMode = 0x80;                     /* AENDERUNG 0x80 */
+		colorMode = 0x80;
 	    }
 	    else if (optarg[0] == '2') {
 		blocksPerPage = 0x20;
@@ -1286,15 +1286,15 @@ main (int argc, char *argv[])
 		if (verb > 1)
 		    fprintf (stderr, "Aufloesung 600dpi\n");
 		jobHeaderStc.res1 = 0x01;
-		jobHeaderStc.res2 = 0x00;                        /* AENDERUNG 0x00 */
+		jobHeaderStc.res2 = 0x00;
 	    }
 	    else if (ResXmul == 2) {
 		if (verb > 1)
 		    fprintf (stderr, "Aufloesung 1200dpi\n");
-		jobHeaderStc.res1 = 0x01;                        /* AENDERUNG 0x01 */
-		jobHeaderStc.res2 = 0x01;                        /* AENDERUNG 0x01 */
+		jobHeaderStc.res1 = 0x01;
+		jobHeaderStc.res2 = 0x01;
 	    }
-	    else if (ResXmul == 3) {                             /* AENDERUNG hinzu */
+	    else if (ResXmul == 3) {
 		if (verb > 1)
 		    fprintf (stderr, "Aufloesung 2400dpi\n");
 		jobHeaderStc.res1 = 0x01;
@@ -1370,32 +1370,32 @@ main (int argc, char *argv[])
 
     /* speicher reservieren */
 
-    encBufferSize = (2 * (resBreite / 8)) + 150;	/* enthaelt im allgemeinen nur eine zeile (kleine zugabe die gleichzeitig die header abdeckt ;-) */                               /* AENDERUNG 2* */
+    encBufferSize = (2 * (resBreite / 8)) + 150;	/* enthaelt im allgemeinen nur eine zeile (kleine zugabe die gleichzeitig die header abdeckt ;-) */
     blockBufferSize = ((resBreite / 8) + 150) * linesPerBlock;	/* einhaelt die zeilen mal anzahl zeilen pro block */
     pageOutSize = blockBufferSize * 8;	/* enthaelt 8 bloecke */
-    lineBufferSize = encBufferSize;                      /* AENDERUNG hinzu */
+    lineBufferSize = encBufferSize;
 
     stFeld[0].encBuffer = malloc (encBufferSize);
     stFeld[0].blockBuffer = malloc (blockBufferSize);
     stFeld[0].pageOut = malloc (pageOutSize);
-    stFeld[0].lineBuffer = malloc (lineBufferSize);      /* AENDERUNG hinzu */
+    stFeld[0].lineBuffer = malloc (lineBufferSize);
 
     if (colorMode == 0xf0) {
 
 	stFeld[1].encBuffer = malloc (encBufferSize);
 	stFeld[1].blockBuffer = malloc (blockBufferSize);
 	stFeld[1].pageOut = malloc (pageOutSize);
-        stFeld[1].lineBuffer = malloc (lineBufferSize);      /* AENDERUNG hinzu */
+        stFeld[1].lineBuffer = malloc (lineBufferSize);
 
 	stFeld[2].encBuffer = malloc (encBufferSize);
 	stFeld[2].blockBuffer = malloc (blockBufferSize);
 	stFeld[2].pageOut = malloc (pageOutSize);
-        stFeld[2].lineBuffer = malloc (lineBufferSize);      /* AENDERUNG hinzu */
+        stFeld[2].lineBuffer = malloc (lineBufferSize);
 
 	stFeld[3].encBuffer = malloc (encBufferSize);
 	stFeld[3].blockBuffer = malloc (blockBufferSize);
 	stFeld[3].pageOut = malloc (pageOutSize);
-        stFeld[3].lineBuffer = malloc (lineBufferSize);      /* AENDERUNG hinzu */
+        stFeld[3].lineBuffer = malloc (lineBufferSize);
     }
 
 
@@ -1425,25 +1425,25 @@ main (int argc, char *argv[])
     }
 
     if (colorMode == 0xf0) {
-	free (stFeld[3].encBuffer);              /* AENDERUNG 3 statt 0 */
+	free (stFeld[3].encBuffer);
 	free (stFeld[3].blockBuffer);
 	free (stFeld[3].pageOut);
-        free (stFeld[3].lineBuffer);             /* AENDERUNG hinzu */
+        free (stFeld[3].lineBuffer);
 
 	free (stFeld[1].encBuffer);
 	free (stFeld[1].blockBuffer);
 	free (stFeld[1].pageOut);
-        free (stFeld[1].lineBuffer);             /* AENDERUNG hinzu */
+        free (stFeld[1].lineBuffer);
 
 	free (stFeld[2].encBuffer);
 	free (stFeld[2].blockBuffer);
 	free (stFeld[2].pageOut);
-        free (stFeld[2].lineBuffer);             /* AENDERUNG hinzu */
+        free (stFeld[2].lineBuffer);
     }
-    free (stFeld[0].encBuffer);                  /* AENDERUNG 0 statt 3 */
+    free (stFeld[0].encBuffer);
     free (stFeld[0].blockBuffer);
     free (stFeld[0].pageOut);
-    free (stFeld[0].lineBuffer);                  /* AENDERUNG hinzu */
+    free (stFeld[0].lineBuffer);
 
     fclose (in_stream);
     fclose (out_stream);
