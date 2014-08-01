@@ -26,13 +26,7 @@
 #include <string.h>
 #include <libgen.h>
 
-/* ----------------------------------------------------------------------
-    other Variables
-    andere Variablen
-   ----------------------------------------------------------------------*/
-
 FILE *in_stream, *out_stream;
-/* FILE *cStream, *mStream, *yStream, *kStream; */
 
 int verb = 0;			/* verbose level */
 enum m2x00w_model { M2300W, M2400W };
@@ -40,16 +34,12 @@ enum m2x00w_model model;
 int MediaCode = 0;
 int PaperCode = 4;
 int ResXmul = 1;
-int ResYmul = 1;
 int colorMode = 0;
 int thisPageColorMode = 0;
 
 int saveToner = 0;
-int useUCR = 0;
 
 int linesPerBlock;
-unsigned char paperFormat;
-unsigned char paperQuality;
 unsigned short blocksPerPage;
 unsigned short thisPageBlocksPerPage;
 unsigned int resBreite;
@@ -66,20 +56,6 @@ long pix[4][3] = {		/* pixel, ucr , tonerSave */
     {0, 0, 0},			/* yellow */
     {0, 0, 0},			/* schwarz */
 };
-
-long cPix = 0;
-long cPixSaved = 0;
-long mPix = 0;
-long mPixSaved = 0;
-long yPix = 0;
-long yPixSaved = 0;
-long kPix = 0;
-long kPixSaved = 0;
-
-
-/* ----------------------------------------------------------
-    Formateinstellungen
--------------------------------------------------------------- */
 
 struct format
 {
@@ -206,13 +182,6 @@ struct media med[7] = {
 /* 6*/ {"Etikette"},
 };
 
-
-/* ----------------------------------------------------------------------------
-
-    Headerstrukturen
-
-   ---------------------------------------------------------------------------*/
-
 unsigned char fileHeader[] = { 0x1B, 0x40, 0x00, 0x02, 0x00, 0xBF, 0x82, 0x10, 0xAE };
 
 struct
@@ -329,8 +298,6 @@ blockHeader =
     0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x53, 0x03, 0x00
 };
 
-/* ---------------------------------------------------------------------------*/
-
 struct steuerFelder
 {
     unsigned int bytesIn;
@@ -361,15 +328,6 @@ struct steuerFelder stFeld[4] = {
     {0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0},
     {0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0}
 };
-
-
-
-/* ----------------------------------------------------------------------
-
-    Procedure Devision ;-)
-
-   ----------------------------------------------------------------------*/
-
 
 void
 Help (void)
@@ -1344,11 +1302,6 @@ main (int argc, char *argv[])
 	case 's':
 	    saveToner = 1;
 	    break;
-
-/*	case 'u' : 		//ucr ist now done by crd
-	    useUCR=1;
-	    break;
-*/
 	case '?':
 	    Help ();
 	    return (1);
@@ -1388,7 +1341,7 @@ main (int argc, char *argv[])
 
     /* werte vorbereiten */
     resBreite = form[PaperCode].resX * ResXmul;
-    resHoehe = form[PaperCode].resY * ResYmul;
+    resHoehe = form[PaperCode].resY;
     linesPerBlock = (form[PaperCode].resY / 8);
 
 
