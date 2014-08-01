@@ -218,8 +218,6 @@ struct media med[7] = {
 
 unsigned char fileHeader[] = { 0x1B, 0x40, 0x00, 0x02, 0x00, 0xBF, 0x82, 0x10, 0xAE };
 
- /* char jobHeader[] ={0x1B,0x50,0x01,0x08,0x00,0xAF,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x24}; */
-
 struct
 {
     unsigned char jobHeaderT1[6];
@@ -228,17 +226,13 @@ struct
     unsigned char jobHeaderT2[6];
     unsigned char prSum;
 }
-jobHeaderStc =
+jobHeader =
 {
     { 0x1B, 0x50, 0x01, 0x08, 0x00, 0xAF},
     0x01, 0x00,
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
     0x00
 };
-
-unsigned char *jobHeader = (unsigned char *)&jobHeaderStc;
-
-
 
 struct
 {
@@ -262,7 +256,7 @@ struct
     unsigned char seitenHeaderT7[5];
     unsigned char prSum;
 }
-seitenHeaderStc =
+seitenHeader =
 {
     { 0x1B, 0x51} ,
     0x02,
@@ -282,8 +276,6 @@ seitenHeaderStc =
     0x00
 };
 
-unsigned char *seitenHeader = (unsigned char *) &seitenHeaderStc;
-
 struct
 {
     unsigned char jobFooterT1[2];
@@ -291,7 +283,7 @@ struct
     unsigned char jobFooterT2[4];
     unsigned char prSum;
 }
-jobFooterStc =
+jobFooter =
 {
     { 0x1B, 0x55},
     0x02,
@@ -299,24 +291,19 @@ jobFooterStc =
     0x00
 };
 
-unsigned char *jobFooter = (unsigned char *) &jobFooterStc;
-
-struct
-{
+struct {
     unsigned char fileFooterT1[2];
     unsigned char headerCount;
     unsigned char fileFooterT2[4];
     unsigned char prSum;
 }
-fileFooterStc =
+fileFooter =
 {
     { 0x1B, 0x41},
     0x00,
     { 0x01, 0x00, 0xBE, 0x00},
     0x00
 };
-
-unsigned char *fileFooter = (unsigned char *) &fileFooterStc;
 
 struct
 {
@@ -337,15 +324,13 @@ struct
     unsigned char prSum;
     /* pruefsumme 0x?? */
 }
-blockHeaderStc =
+blockHeader =
 {
     { 0x1B, 0x52},
     0x03,
     { 0x08, 0x00, 0xAD},
     0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x53, 0x03, 0x00
 };
-
-unsigned char *blockHeader = (unsigned char *) &blockHeaderStc;
 
 /* ---------------------------------------------------------------------------*/
 
@@ -445,6 +430,33 @@ Help (void)
     exit (1);
 
 
+}
+
+unsigned char checksum(void *p, int length)
+{
+    int i;
+    unsigned char sum = 0;
+    unsigned char *data = p;
+
+    for (i = 0; i < length; i++) {
+	sum += *data;
+	data++;
+    }
+
+    return sum;
+}
+
+void hex_dump(char *title, void *p, int length)
+{
+    int i;
+    unsigned char *data = p;
+
+    fprintf (stderr, "%s", title);
+    for (i = 0; i < length; i++) {
+        fprintf (stderr, " %.2hhx", *data);
+        data++;
+    }
+    fprintf (stderr, "\n");
 }
 
 void
@@ -684,60 +696,48 @@ doEncode (int inByte, int colorID)
 	/* wenn die anzahl der zeilen f|r einen block erreicht ist muss der blockheader generiert werden */
 	/* dies kann erst jetzt geschehen, da die anzahl der im block befindlichen bytes im header steht */
 	if (stFeld[colorID].linesOut >= (linesPerBlock / (model == M2400W ? 2 : 1))) {
-	    int psr;
 	    stFeld[colorID].blocksOut++;
 	    if (verb > 4)
 		fprintf (stderr,
 			 "Blockheader fuer Block %i mit %5i Bytes generieren und Block raus kopieren...\n",
 			 (int) stFeld[colorID].blocksOut,
 			 (int) stFeld[colorID].indexBlockBuffer);
-	    blockHeaderStc.blockLength1 =
+	    blockHeader.blockLength1 =
 		(char) stFeld[colorID].indexBlockBuffer;
-	    blockHeaderStc.blockLength2 =
+	    blockHeader.blockLength2 =
 		(char) (stFeld[colorID].indexBlockBuffer >> 8);
-	    blockHeaderStc.blockLength3 =
+	    blockHeader.blockLength3 =
 		(char) (stFeld[colorID].indexBlockBuffer >> 16);
-	    blockHeaderStc.blockLength4 =
+	    blockHeader.blockLength4 =
 		(char) (stFeld[colorID].indexBlockBuffer >> 24);
-	    blockHeaderStc.linesPerBlock1 = (char) (linesPerBlock);
-	    blockHeaderStc.linesPerBlock2 = (char) (linesPerBlock >> 8);
+	    blockHeader.linesPerBlock1 = (char) (linesPerBlock);
+	    blockHeader.linesPerBlock2 = (char) (linesPerBlock >> 8);
 	    /* die berechnung der headerCount muss sicherstellen das die reichenfolge stimmt */
 	    if (thisSiteColorMode == 0xf0) {
-		blockHeaderStc.headerCount =
+		blockHeader.headerCount =
 		    siteInitHeaderCount + stFeld[colorID].blocksOut - 1 +
 		    ((3 - colorID) * 8);
 	    }
 	    else {
-		blockHeaderStc.headerCount =
+		blockHeader.headerCount =
 		    siteInitHeaderCount + stFeld[colorID].blocksOut - 1;
 	    }
 	    headerCount++;
 	    if (verb > 4)
 		fprintf (stderr,
 			 "BlockHeader.headerCount fuer colorID %i ist %i\n",
-			 colorID, blockHeaderStc.headerCount);
-	    blockHeaderStc.blockCount = stFeld[colorID].blocksOut;
-	    blockHeaderStc.tonerColor = colorID;
+			 colorID, blockHeader.headerCount);
+	    blockHeader.blockCount = stFeld[colorID].blocksOut;
+	    blockHeader.tonerColor = colorID;
 
-	    /* pruefsumme berechnen */
-	    blockHeaderStc.prSum = 0;
-	    for (psr = 0; psr < sizeof(blockHeaderStc) - 1; psr++) {
-		blockHeaderStc.prSum += blockHeader[psr];
+	    blockHeader.prSum = checksum(&blockHeader, sizeof(blockHeader) - 1);
 
-	    }
 	    memcpy (&stFeld[colorID].pageOut[stFeld[colorID].indexPageOut],
-		    blockHeader, sizeof(blockHeaderStc));
-	    stFeld[colorID].indexPageOut += sizeof(blockHeaderStc);
+		    &blockHeader, sizeof(blockHeader));
+	    stFeld[colorID].indexPageOut += sizeof(blockHeader);
 
-	    if (verb > 4) {
-		int vR;
-		fprintf (stderr, "Blockheader: ");
-		for (vR = 0; vR < sizeof(blockHeaderStc); vR++) {
-		    fprintf (stderr, " %.2x", blockHeader[vR]);
-		}
-		fprintf (stderr, "\n");
-	    }
-
+	    if (verb > 4)
+		hex_dump("Blockheader: ", &blockHeader, sizeof(blockHeader));
 
 	    memcpy (&stFeld[colorID].pageOut[stFeld[colorID].indexPageOut],
 		    &stFeld[colorID].blockBuffer[0],
@@ -788,16 +788,12 @@ clearBuffer (int i)
 void
 writeJobHeader (void)
 {
-    long psr;
-
-    writeOut (out_stream, &fileHeader[0], sizeof(fileHeader));
+    writeOut (out_stream, fileHeader, sizeof(fileHeader));
     headerCount++;
 
-    for (psr = 0; psr < sizeof(jobHeaderStc) - 1; psr++) {
-	jobHeaderStc.prSum += jobHeader[psr];
-    }
+    jobHeader.prSum = checksum(&jobHeader, sizeof(jobHeader) - 1);
 
-    writeOut (out_stream, &jobHeader[0], sizeof(jobHeaderStc));
+    writeOut (out_stream, &jobHeader, sizeof(jobHeader));
     headerCount++;
     if (verb > 1)
 	fprintf (stderr, "JobHeader written.\n");
@@ -806,37 +802,24 @@ writeJobHeader (void)
 void
 writeSiteHeader (void)
 {
-    long psr;
-
     /* seitenHeader ausgeben */
-    seitenHeaderStc.headerCount = reservedHeaderCountSH;
-    seitenHeaderStc.breite1 = (unsigned char) resBreite;
-    seitenHeaderStc.breite2 = (unsigned char) (resBreite >> 8);
-    seitenHeaderStc.hoehe1 = (unsigned char) resHoehe;
-    seitenHeaderStc.hoehe2 = (unsigned char) (resHoehe >> 8);
-    seitenHeaderStc.colorMode = thisSiteColorMode;
-    seitenHeaderStc.blocksPerPage1 = thisSiteBlocksPerPage;
-    seitenHeaderStc.blocksPerPage2 = thisSiteBlocksPerPage;
+    seitenHeader.headerCount = reservedHeaderCountSH;
+    seitenHeader.breite1 = (unsigned char) resBreite;
+    seitenHeader.breite2 = (unsigned char) (resBreite >> 8);
+    seitenHeader.hoehe1 = (unsigned char) resHoehe;
+    seitenHeader.hoehe2 = (unsigned char) (resHoehe >> 8);
+    seitenHeader.colorMode = thisSiteColorMode;
+    seitenHeader.blocksPerPage1 = thisSiteBlocksPerPage;
+    seitenHeader.blocksPerPage2 = thisSiteBlocksPerPage;
 
-    seitenHeaderStc.paperFormat = PaperCode;
-    seitenHeaderStc.paperQuality = MediaCode;
+    seitenHeader.paperFormat = PaperCode;
+    seitenHeader.paperQuality = MediaCode;
 
-    /* pruefsumme berechnen */
-    seitenHeaderStc.prSum = 0x00;
-    for (psr = 0; psr < 34; psr++) {
-	seitenHeaderStc.prSum += seitenHeader[psr];
-    }
-    writeOut (out_stream, &seitenHeader[0], sizeof(seitenHeaderStc));
+    seitenHeader.prSum = checksum(&seitenHeader, sizeof(seitenHeader) - 1);
+    writeOut (out_stream, &seitenHeader, sizeof(seitenHeader));
 
-    if (verb > 4) {
-	int vR;
-	fprintf (stderr, "Seitenheader: ");
-	for (vR = 0; vR < sizeof(seitenHeaderStc); vR++) {
-	    fprintf (stderr, " %.2x", seitenHeader[vR]);
-	}
-	fprintf (stderr, "\n");
-    }
-
+    if (verb > 4)
+	hex_dump("Seitenheader: ", &seitenHeader, sizeof(seitenHeader));
 }
 
 
@@ -1313,7 +1296,6 @@ main (int argc, char *argv[])
     int blockBufferSize;
     int pageOutSize;
     int lineBufferSize;
-    long psr;
     char *prog_name;
 
     prog_name = basename(argv[0]);
@@ -1325,10 +1307,10 @@ main (int argc, char *argv[])
         form = form_2400;
         fileHeader[6] = 0x85;
         fileHeader[8] = 0xB1;
-        jobHeaderStc.res2 = 0x01;
-        seitenHeaderStc.colorMode = 0x80;
-        seitenHeaderStc.seitenHeaderT7[1] = 0x00;
-        blockHeaderStc.linesPerBlock1 = 0x50;
+        jobHeader.res2 = 0x01;
+        seitenHeader.colorMode = 0x80;
+        seitenHeader.seitenHeaderT7[1] = 0x00;
+        blockHeader.linesPerBlock1 = 0x50;
     }
 
 /* 1. parameter lesen */
@@ -1382,20 +1364,20 @@ main (int argc, char *argv[])
 	    if (ResXmul == 1) {
 		if (verb > 1)
 		    fprintf (stderr, "Aufloesung 600dpi\n");
-		jobHeaderStc.res1 = 0x01;
-		jobHeaderStc.res2 = 0x00;
+		jobHeader.res1 = 0x01;
+		jobHeader.res2 = 0x00;
 	    }
 	    else if (ResXmul == 2) {
 		if (verb > 1)
 		    fprintf (stderr, "Aufloesung 1200dpi\n");
-		jobHeaderStc.res1 = (model == M2300W) ? 0x02 : 0x01;
-		jobHeaderStc.res2 = 0x01;
+		jobHeader.res1 = (model == M2300W) ? 0x02 : 0x01;
+		jobHeader.res2 = 0x01;
 	    }
 	    else if (model == M2400W && ResXmul == 3) {
 		if (verb > 1)
 		    fprintf (stderr, "Aufloesung 2400dpi\n");
-		jobHeaderStc.res1 = 0x01;
-		jobHeaderStc.res2 = 0x02;
+		jobHeader.res1 = 0x01;
+		jobHeader.res2 = 0x02;
 		ResXmul = 4;
 	    }
 	    else {
@@ -1508,19 +1490,13 @@ main (int argc, char *argv[])
 
     if (jobHeaderWritten == 1) {
 	/* footer ausgeben */
-	jobFooterStc.headerCount = headerCount++;
-	/* pruefsumme berechnen */
-	for (psr = 0; psr < sizeof(jobFooterStc) - 1; psr++) {
-	    jobFooterStc.prSum += jobFooter[psr];
-	}
-	writeOut (out_stream, &jobFooter[0], sizeof(jobFooterStc));
+	jobFooter.headerCount = headerCount++;
+	jobFooter.prSum = checksum(&jobFooter, sizeof(jobFooter) - 1);
+	writeOut (out_stream, &jobFooter, sizeof(jobFooter));
 
-	fileFooterStc.headerCount = headerCount++;
-	/* pruefsumme berechnen */
-	for (psr = 0; psr < sizeof(fileFooterStc) - 1; psr++) {
-	    fileFooterStc.prSum += fileFooter[psr];
-	}
-	writeOut (out_stream, &fileFooter[0], sizeof(fileFooterStc));
+	fileFooter.headerCount = headerCount++;
+	fileFooter.prSum = checksum(&fileFooter, sizeof(fileFooter) - 1);
+	writeOut (out_stream, &fileFooter, sizeof(fileFooter));
 	if (verb > 1)
 	    fprintf (stderr, "JobFooter written.\n");
     }
