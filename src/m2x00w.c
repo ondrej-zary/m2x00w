@@ -394,7 +394,6 @@ encodeToBlockBuffer (int colorID, struct steuerFelder *stFeld)
 {
     int z;
     long rohBytes = stFeld->indexEncBuffer - stFeld->rleCount;
-    unsigned char rleOut[2];
     int rle64, rle1;
     void *encBuffer = stFeld->encBuffer;
 
@@ -420,36 +419,26 @@ encodeToBlockBuffer (int colorID, struct steuerFelder *stFeld)
     rle1 = (stFeld->rleCount) - (rle64 * 64);
 
     if (model == M2400W && rle64 > 63) {
-        rleOut[0] = 224;
-	rleOut[1] = stFeld->lastByte;
-	for (z = 0; z < 2; z++) {
-	    memcpy (&stFeld->
-		    blockBuffer[stFeld->indexBlockBuffer], &rleOut[0], 2);
-	    stFeld->indexBlockBuffer += 2;
-	    DBG(5, "---->64er RLE Encoding: 2048 mal %.2x - codiert als: %.2x%.2x\n", rleOut[1], rleOut[0], rleOut[1]);
-	    hex_dump(5, "64er RLE::\n", rleOut, 2);
+	for (z = 0; z < 2; z++) { ///// BUG?
+	    stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 224;
+	    stFeld->blockBuffer[stFeld->indexBlockBuffer++] = stFeld->lastByte;
+	    DBG(5, "---->64er RLE Encoding: 2048 mal %.2x - codiert als: %.2x%.2x\n", stFeld->lastByte);
+	    hex_dump(5, "64er RLE::\n", &stFeld->blockBuffer[stFeld->indexBlockBuffer - 2], 2);
 	}
     	rle64 -= 64;
     }
 
     if (rle64 > 0) {
-	rleOut[0] = 192 + rle64;
-	rleOut[1] = stFeld->lastByte;
-	memcpy (&stFeld->
-		blockBuffer[stFeld->indexBlockBuffer], &rleOut[0], 2);
-	stFeld->indexBlockBuffer += 2;
-
-	DBG(5, "---->64er RLE Encoding: %i mal %.2x - codiert als: %.2x%.2x\n", rle64, rleOut[1], rleOut[0], rleOut[1]);
-	hex_dump(5, "64er RLE::\n", rleOut, 2);
+	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 192 + rle64;
+	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = stFeld->lastByte;
+	DBG(5, "---->64er RLE Encoding: %i mal %.2x\n", rle64, stFeld->lastByte);
+	hex_dump(5, "64er RLE::\n", &stFeld->blockBuffer[stFeld->indexBlockBuffer - 2], 2);
     }
     if (rle1 > 0) {
-	rleOut[0] = 128 + rle1;
-	rleOut[1] = stFeld->lastByte;
-	memcpy (&stFeld->
-		blockBuffer[stFeld->indexBlockBuffer], &rleOut[0], 2);
-	stFeld->indexBlockBuffer += 2;
-	DBG(5, "---->1er RLE Encoding: %i mal %.2x - codiert als: %.2x%.2x\n", rle1, rleOut[1], rleOut[0], rleOut[1]);
-	hex_dump(5, " 1er RLE::\n", rleOut, 2);
+	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = 128 + rle1;
+	stFeld->blockBuffer[stFeld->indexBlockBuffer++] = stFeld->lastByte;
+	DBG(5, "---->1er RLE Encoding: %i mal %.2x\n", rle1, stFeld->lastByte);
+	hex_dump(5, " 1er RLE::\n", &stFeld->blockBuffer[stFeld->indexBlockBuffer - 2], 2);
     }
 
 
