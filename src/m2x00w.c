@@ -62,7 +62,7 @@ int page_block_seq;   /* saved sequence number for startpage block */
 
 long pix[4] = { 0, 0, 0, 0 };	/* pixel counter (C,M,Y,K) */
 
-void (*encode)(int inByte, int colorID);
+
 
 #define M2X00W_MAGIC		0x1B
 struct header {
@@ -278,6 +278,8 @@ struct steuerFelder stFeld[4] = {
     {0, 0, 0, NULL, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0}
 };
 
+void (*encode)(int inByte, int colorID, struct steuerFelder *stFeld);
+
 void
 Help (void)
 {
@@ -387,17 +389,17 @@ void write_block(unsigned char block_type, void *data, unsigned char data_len, F
 }
 
 void
-encodeToBlockBuffer (int colorID)
+encodeToBlockBuffer (int colorID, struct steuerFelder *stFeld)
 {
     int z;
-    long rohBytes = stFeld[colorID].indexEncBuffer - stFeld[colorID].rleCount;
+    long rohBytes = stFeld->indexEncBuffer - stFeld->rleCount;
     int rohByteCount = 0;
     unsigned char rleOut[2];
     int rle64, rle1;
 
     DBG(5, "--> Ausgabe von %.3i Bytes fuer colorID %i davon %.3i Rohbytes und %.3i mal %.2x RLE encoded am Ende.\n",
-	(int) stFeld[colorID].indexEncBuffer, (int) colorID, (int) rohBytes, (int) stFeld[colorID].rleCount, stFeld[colorID].lastByte);
-    hex_dump(5, "Daten fuer Encoder:\n", stFeld[colorID].encBuffer, stFeld[colorID].indexEncBuffer);
+	(int) stFeld->indexEncBuffer, (int) colorID, (int) rohBytes, (int) stFeld->rleCount, stFeld->lastByte);
+    hex_dump(5, "Daten fuer Encoder:\n", stFeld->encBuffer, stFeld->indexEncBuffer);
     /* rohbytes verarbeiten */
     /* 64er stufe */
     while ((rohBytes - (rohByteCount * 64)) >= 64) {
@@ -405,11 +407,11 @@ encodeToBlockBuffer (int colorID)
 	DBG(5, "Segment mit 64 Bytes ausgeben ...");
 	/* header belegen (standardwert) */
 	rBOut[0] = (char) (64 - 1);
-	memcpy (&rBOut[1], &stFeld[colorID].encBuffer[(rohByteCount * 64)],
+	memcpy (&rBOut[1], &stFeld->encBuffer[(rohByteCount * 64)],
 		64);
-	memcpy (&stFeld[colorID].
-		blockBuffer[stFeld[colorID].indexBlockBuffer], &rBOut[0], 65);
-	stFeld[colorID].indexBlockBuffer += 65;
+	memcpy (&stFeld->
+		blockBuffer[stFeld->indexBlockBuffer], &rBOut[0], 65);
+	stFeld->indexBlockBuffer += 65;
 	rohByteCount++;
 	DBG(5, "OK\n");
 	hex_dump(5, "Rohbytes:\n", rBOut, 65);
@@ -424,12 +426,12 @@ encodeToBlockBuffer (int colorID)
 
 	/* header belegen */
 	rBOut[0] = (char) ((rohBytes - (64 * rohByteCount)) - 1);
-	memcpy (&rBOut[1], &stFeld[colorID].encBuffer[(rohByteCount * 64)],
+	memcpy (&rBOut[1], &stFeld->encBuffer[(rohByteCount * 64)],
 		(rohBytes - (64 * rohByteCount)));
-	memcpy (&stFeld[colorID].
-		blockBuffer[stFeld[colorID].indexBlockBuffer], &rBOut[0],
+	memcpy (&stFeld->
+		blockBuffer[stFeld->indexBlockBuffer], &rBOut[0],
 		(rohBytes + 1 - (64 * rohByteCount)));
-	stFeld[colorID].indexBlockBuffer +=
+	stFeld->indexBlockBuffer +=
 	    (rohBytes - (64 * rohByteCount) + 1);
 	DBG(5, "OK\n");
 	hex_dump(5, "Rohbytes:\n", rBOut, rohBytes - (64 * rohByteCount));
@@ -440,16 +442,16 @@ encodeToBlockBuffer (int colorID)
 
     /* rle verarbeiten */
 
-    rle64 = floor ((double) (stFeld[colorID].rleCount) / 64);
-    rle1 = (stFeld[colorID].rleCount) - (rle64 * 64);
+    rle64 = floor ((double) (stFeld->rleCount) / 64);
+    rle1 = (stFeld->rleCount) - (rle64 * 64);
 
     if (model == M2400W && rle64 > 63) {
         rleOut[0] = 224;
-	rleOut[1] = stFeld[colorID].lastByte;
+	rleOut[1] = stFeld->lastByte;
 	for (z = 0; z < 2; z++) {
-	    memcpy (&stFeld[colorID].
-		    blockBuffer[stFeld[colorID].indexBlockBuffer], &rleOut[0], 2);
-	    stFeld[colorID].indexBlockBuffer += 2;
+	    memcpy (&stFeld->
+		    blockBuffer[stFeld->indexBlockBuffer], &rleOut[0], 2);
+	    stFeld->indexBlockBuffer += 2;
 	    DBG(5, "---->64er RLE Encoding: 2048 mal %.2x - codiert als: %.2x%.2x\n", rleOut[1], rleOut[0], rleOut[1]);
 	    hex_dump(5, "64er RLE::\n", rleOut, 2);
 	}
@@ -458,49 +460,49 @@ encodeToBlockBuffer (int colorID)
 
     if (rle64 > 0) {
 	rleOut[0] = 192 + rle64;
-	rleOut[1] = stFeld[colorID].lastByte;
-	memcpy (&stFeld[colorID].
-		blockBuffer[stFeld[colorID].indexBlockBuffer], &rleOut[0], 2);
-	stFeld[colorID].indexBlockBuffer += 2;
+	rleOut[1] = stFeld->lastByte;
+	memcpy (&stFeld->
+		blockBuffer[stFeld->indexBlockBuffer], &rleOut[0], 2);
+	stFeld->indexBlockBuffer += 2;
 
 	DBG(5, "---->64er RLE Encoding: %i mal %.2x - codiert als: %.2x%.2x\n", rle64, rleOut[1], rleOut[0], rleOut[1]);
 	hex_dump(5, "64er RLE::\n", rleOut, 2);
     }
     if (rle1 > 0) {
 	rleOut[0] = 128 + rle1;
-	rleOut[1] = stFeld[colorID].lastByte;
-	memcpy (&stFeld[colorID].
-		blockBuffer[stFeld[colorID].indexBlockBuffer], &rleOut[0], 2);
-	stFeld[colorID].indexBlockBuffer += 2;
+	rleOut[1] = stFeld->lastByte;
+	memcpy (&stFeld->
+		blockBuffer[stFeld->indexBlockBuffer], &rleOut[0], 2);
+	stFeld->indexBlockBuffer += 2;
 	DBG(5, "---->1er RLE Encoding: %i mal %.2x - codiert als: %.2x%.2x\n", rle1, rleOut[1], rleOut[0], rleOut[1]);
 	hex_dump(5, " 1er RLE::\n", rleOut, 2);
     }
 
 
     DBG(5, "--->RLE Encode for %i done.\n", colorID);
-    stFeld[colorID].indexEncBuffer = 0;
+    stFeld->indexEncBuffer = 0;
 }
 
 void
-doEncode (int inByte, int colorID)
+doEncode (int inByte, int colorID, struct steuerFelder *stFeld)
 {
-    if (stFeld[colorID].bytesIn == 0) {
+    if (stFeld->bytesIn == 0) {
 	unsigned char dummyTable[1] = { 0x80 };
-	stFeld[colorID].linesOut++;
+	stFeld->linesOut++;
 	/* jede Zeile beginnt mit einer Tabelle */
 	/* die tabellenkompression wurde vorerst weggelassen deshalb eine leere tabelle */
-	DBG(5, "Dummy Tabelle fuer neue Zeile %3i ausgeben .\n", stFeld[colorID].linesOut);
-	memcpy (&stFeld[colorID].
-		blockBuffer[stFeld[colorID].indexBlockBuffer], &dummyTable[0],
+	DBG(5, "Dummy Tabelle fuer neue Zeile %3i ausgeben .\n", stFeld->linesOut);
+	memcpy (&stFeld->
+		blockBuffer[stFeld->indexBlockBuffer], &dummyTable[0],
 		1);
-	stFeld[colorID].indexBlockBuffer += 1;
+	stFeld->indexBlockBuffer += 1;
 
     }
     if (saveToner > 0) {
 	/* spar Toner indem es jedes 2te bit loescht. */
 	/* die loeschung erfolgt pro zeile versetzt (schachbrettmuster) */
-	if ((model != M2400W && (stFeld[colorID].linesOut % 2 > 0)) ||
-	   (model == M2400W && ((stFeld[colorID].bytesIn + 1) > (resBreite / 8)))) {
+	if ((model != M2400W && (stFeld->linesOut % 2 > 0)) || 
+	   (model == M2400W && ((stFeld->bytesIn + 1) > (resBreite / 8)))) {
 	    inByte = inByte & 0xaa;
 	}
 	else {
@@ -508,62 +510,62 @@ doEncode (int inByte, int colorID)
 	}
     }
 
-    if (inByte == stFeld[colorID].lastByte || stFeld[colorID].rleCount < 1) {
-	stFeld[colorID].rleCount++;	/* zaehlen wie oft ein byte wiederholt wird */
+    if (inByte == stFeld->lastByte || stFeld->rleCount < 1) {
+	stFeld->rleCount++;	/* zaehlen wie oft ein byte wiederholt wird */
     }
     else {
-	if (stFeld[colorID].rleCount > 3) {	/* rle ausgabe lohnt sich, deshalb ausgeben */
-	    encodeToBlockBuffer (colorID);
+	if (stFeld->rleCount > 3) {	/* rle ausgabe lohnt sich, deshalb ausgeben */
+	    encodeToBlockBuffer (colorID, stFeld);
 	    /* wenn sich das ausgeben nicht lohnt, werden die aufgelaufenen rles verworfen und als normale bytes gewertet */
 	}
-	stFeld[colorID].rleCount = 0;
+	stFeld->rleCount = 0;
     }
-    stFeld[colorID].lastByte = inByte;
+    stFeld->lastByte = inByte;
 
-    stFeld[colorID].bytesIn++;	/* EingabeByte hochzaehlen und byyte auf den buffer legen */
-    stFeld[colorID].encBuffer[stFeld[colorID].indexEncBuffer] = inByte;
-    stFeld[colorID].indexEncBuffer++;
+    stFeld->bytesIn++;	/* EingabeByte hochzaehlen und byyte auf den buffer legen */
+    stFeld->encBuffer[stFeld->indexEncBuffer] = inByte;
+    stFeld->indexEncBuffer++;
 
 
-    if ((stFeld[colorID].bytesIn + 1) > ((model == M2400W ? 2 : 1) * (resBreite / 8))) {
+    if ((stFeld->bytesIn + 1) > ((model == M2400W ? 2 : 1) * (resBreite / 8))) {
 	/* eine zeile ist voll. den rest im buffer codieren */
 
-	encodeToBlockBuffer (colorID);
-	stFeld[colorID].bytesIn = 0;
-	stFeld[colorID].rleCount = 0;
+	encodeToBlockBuffer (colorID, stFeld);
+	stFeld->bytesIn = 0;
+	stFeld->rleCount = 0;
 	/* wenn die anzahl der zeilen f|r einen block erreicht ist muss der blockheader generiert werden */
 	/* dies kann erst jetzt geschehen, da die anzahl der im block befindlichen bytes im header steht */
-	if (stFeld[colorID].linesOut >= (linesPerBlock / (model == M2400W ? 2 : 1))) {
+	if (stFeld->linesOut >= (linesPerBlock / (model == M2400W ? 2 : 1))) {
 	    int tmp = headerCount;
 	    struct block_data header = {
-		.data_len = cpu_to_le32(stFeld[colorID].indexBlockBuffer),
+		.data_len = cpu_to_le32(stFeld->indexBlockBuffer),
 		.color = colorID,
-		.block_cnt = ++stFeld[colorID].blocksOut,
+		.block_cnt = ++stFeld->blocksOut,
 		.lines = cpu_to_le16(linesPerBlock),
 	    };
 	    DBG(4, "Blockheader fuer Block %i mit %5i Bytes generieren und Block raus kopieren...\n",
-			 (int) stFeld[colorID].blocksOut, (int) stFeld[colorID].indexBlockBuffer);
+			 (int) stFeld->blocksOut, (int) stFeld->indexBlockBuffer);
 	    /* die berechnung der headerCount muss sicherstellen das die reichenfolge stimmt */
 	    if (thisPageColorMode == 0xf0) {
-		headerCount = siteInitHeaderCount + stFeld[colorID].blocksOut - 1 + ((3 - colorID) * 8);
+		headerCount = siteInitHeaderCount + stFeld->blocksOut - 1 + ((3 - colorID) * 8);
 	    }
 	    else {
-		headerCount = siteInitHeaderCount + stFeld[colorID].blocksOut - 1;
+		headerCount = siteInitHeaderCount + stFeld->blocksOut - 1;
 	    }
 	    DBG(4, "BlockHeader.headerCount fuer colorID %i ist %i\n", colorID, headerCount);
-	    write_block(M2X00W_BLOCK_DATA, &header, sizeof(header), NULL, &stFeld[colorID].pageOut[stFeld[colorID].indexPageOut]);
+	    write_block(M2X00W_BLOCK_DATA, &header, sizeof(header), NULL, &stFeld->pageOut[stFeld->indexPageOut]);
 
-	    stFeld[colorID].indexPageOut += sizeof(struct header) + sizeof(header) + 1;
+	    stFeld->indexPageOut += sizeof(struct header) + sizeof(header) + 1;
 	    headerCount = tmp + 1;
 	    hex_dump(4, "Blockheader: ", &header, sizeof(header));
 
-	    memcpy (&stFeld[colorID].pageOut[stFeld[colorID].indexPageOut],
-		    &stFeld[colorID].blockBuffer[0],
-		    stFeld[colorID].indexBlockBuffer);
-	    stFeld[colorID].indexPageOut += stFeld[colorID].indexBlockBuffer;
+	    memcpy (&stFeld->pageOut[stFeld->indexPageOut],
+		    &stFeld->blockBuffer[0],
+		    stFeld->indexBlockBuffer);
+	    stFeld->indexPageOut += stFeld->indexBlockBuffer;
 
-	    stFeld[colorID].linesOut = 0;
-	    stFeld[colorID].indexBlockBuffer = 0;
+	    stFeld->linesOut = 0;
+	    stFeld->indexBlockBuffer = 0;
 	}
 
     }
@@ -572,18 +574,18 @@ doEncode (int inByte, int colorID)
 }
 
 void
-prepDoEncode(int inByte, int colorID)
+prepDoEncode(int inByte, int colorID, struct steuerFelder *stFeld)
 {
-    stFeld[colorID].lineBuffer[stFeld[colorID].indexLineBuffer] =  inByte;
-    stFeld[colorID].indexLineBuffer += 1;
+    stFeld->lineBuffer[stFeld->indexLineBuffer] =  inByte;
+    stFeld->indexLineBuffer += 1;
 
-    if (stFeld[colorID].indexLineBuffer == (resBreite / 4))  {
+    if (stFeld->indexLineBuffer == (resBreite / 4))  {
         int z;
         for (z = 0; z < (resBreite / 8); z++)  {
-            doEncode (stFeld[colorID].lineBuffer[z], colorID);
-            doEncode (stFeld[colorID].lineBuffer[z + (resBreite / 8)], colorID);
+            doEncode (stFeld->lineBuffer[z], colorID, stFeld);
+            doEncode (stFeld->lineBuffer[z + (resBreite / 8)], colorID, stFeld);
         }
-        stFeld[colorID].indexLineBuffer = 0;
+        stFeld->indexLineBuffer = 0;
     }
 
 }
@@ -838,9 +840,9 @@ readPkmraw (void)
 	    for (shz = 0; shz < leadLines; shz++) {	/* vorschleife fuer fehlende hohenzeilen */
 		for (sbz = 0; sbz < (resBreite / 8); sbz++) {
 		    if (colorMode == 0xf0)
-		        encode (0x00, colorKey[ccs]);
+		        encode (0x00, colorKey[ccs], &stFeld[colorKey[ccs]]);
 		    else
-		        encode (0x00, colorKey[3]);
+		        encode (0x00, colorKey[3], &stFeld[colorKey[3]]);
 		}
 	    }
 	}
@@ -862,9 +864,9 @@ readPkmraw (void)
 		DBG(5, "erzeuge %i bytes mit 0x00 am Anfang\n", leadPixBytes);
 		for (sbz = 0; sbz < leadPixBytes; sbz++) {
 		    if (colorMode == 0xf0) 
-		       encode (0x00, colorKey[ccs]);
+		       encode (0x00, colorKey[ccs], &stFeld[colorKey[ccs]]);
 		    else
-		       encode (0x00, colorKey[3]);
+		       encode (0x00, colorKey[3], &stFeld[colorKey[3]]);
 		}
 
 	    }
@@ -895,10 +897,10 @@ readPkmraw (void)
                             pix[ccs]++;
                         if (c & 0x01)
                             pix[ccs]++;
-                        encode (c, colorKey[ccs]);
+                        encode (c, colorKey[ccs], &stFeld[colorKey[ccs]]);
 		    }
 		    else {
-		        encode (c, colorKey[3]);
+		        encode (c, colorKey[3], &stFeld[colorKey[3]]);
 		    }
 		}
 		else {
@@ -924,9 +926,9 @@ readPkmraw (void)
 		DBG(5, "erzeuge %i bytes mit 0x00 am Ende\n", trailPixBytes);
 		for (sbz = 0; sbz < trailPixBytes; sbz++) {
 		    if (colorMode == 0xf0)
-		        encode (0x00, colorKey[ccs]);
+		        encode (0x00, colorKey[ccs], &stFeld[colorKey[ccs]]);
 		    else
-		        encode (0x00, colorKey[3]);
+		        encode (0x00, colorKey[3], &stFeld[colorKey[3]]);
 		}
 
 	    }
@@ -953,9 +955,9 @@ readPkmraw (void)
 	    for (shz = 0; shz < trailLines; shz++) {	/* endschleife fuer fehlende hohenzeilen */
 		for (sbz = 0; sbz < (resBreite / 8); sbz++) {
 		    if (colorMode == 0xf0)
-		        encode (c, colorKey[ccs]);
+		        encode (c, colorKey[ccs], &stFeld[colorKey[ccs]]);
 		    else
-			encode (c, colorKey[3]);
+			encode (c, colorKey[3], &stFeld[colorKey[3]]);
 		}
 	    }
 	}
