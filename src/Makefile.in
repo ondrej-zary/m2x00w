@@ -31,25 +31,26 @@ PREFIX	= @prefix@
 BINDIR	= $(INSTROOT)$(PREFIX)/bin
 SHARE	= $(INSTROOT)$(PREFIX)/share/$(NAME)/$(VERSION)
 
-PROGS	= m2400w m2300w-wrapper
+PROGS	= m2x00w m2300w-wrapper
 
-all: m2400w
+all: m2x00w
 
-m2400w: m2400w.c
-	$(CC) $(CFLAGS) -o m2400w m2400w.c $(LIBS)
+m2x00w: m2x00w.c
+	$(CC) $(CFLAGS) -o m2x00w m2x00w.c $(LIBS)
 
 install: all $(PROGS)
 	chmod 755 m2300w-wrapper
-	rm -f $(BINDIR)/m2300w $(BINDIR)/m2400w $(BINDIR)/m2300w_wrapper
+	rm -f $(BINDIR)/m2300w $(BINDIR)/m2400w $(BINDIR)/m2x00w $(BINDIR)/m2300w_wrapper
 	$(INSTALL) -d -m 755 $(BINDIR)
 	$(INSTALL) -d -m 755 $(SHARE)
 	for P in $(PROGS) ; do \
 	    $(INSTALL) -m 755 $$P $(BINDIR); \
 	done
-	ln -s m2400w $(BINDIR)/m2300w
+	ln -s m2x00w $(BINDIR)/m2300w
+	ln -s m2x00w $(BINDIR)/m2400w
 
 clean:
-	rm -f m2400w
+	rm -f m2x00w
 
 distclean: clean
 	rm -f Makefile m2300w-wrapper

@@ -1,7 +1,7 @@
 /*
- * m2400w converts the pbmraw or pksmraw output of ghostscript
+ * m2x00w converts the pbmraw or pksmraw output of ghostscript
  * (www.ghostscript.com) into the format of the Minolta Magicolor
- * 2400W Winprinter
+ * 2300W/2400W Winprinter
  *
  * Copyright 2004 Leif Birkenfeld (leif@birkenfeld-home.de)
  *           2005 Thomas Rohringer (thoroh@users.sourceforge.net)
