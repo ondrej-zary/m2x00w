@@ -39,6 +39,10 @@ enum m2x00w_model model;
 int MediaCode = 0;
 int PaperCode = 4;
 int ResXmul = 1;
+enum m2x00w_res_y { RES_300DPI = 0x00, RES_600DPI, RES_1200DPI };
+enum m2x00w_res_y res_y = RES_600DPI;
+enum mx200w_res_x { RES_MULT1 = 0x00, RES_MULT2, RES_MULT4 };
+enum mx200w_res_x res_x = RES_MULT1;
 int colorMode = 0;
 int thisPageColorMode = 0;
 
@@ -79,6 +83,15 @@ struct header {
 struct block_begin {
     unsigned char model;
     unsigned char color;	/* 0x10 */
+} __attribute__((packed));
+
+struct block_params {
+    unsigned char res_y;	/* 00=300dpi, 01=600dpi, 02=1200dpi */
+    unsigned char res_x;	/* 00=res_y, 01=2*res_y, 02=4*res_y */
+    unsigned char zero;
+    unsigned char paper_weight;
+    unsigned char interleave;
+    unsigned char zeros[3];
 } __attribute__((packed));
 
 struct format
@@ -204,22 +217,6 @@ struct media med[7] = {
 /* 4*/ {"Briefkopf"},
 /* 5*/ {"Postkarte"},
 /* 6*/ {"Etikette"},
-};
-
-struct
-{
-    unsigned char jobHeaderT1[6];
-    unsigned char res1;
-    unsigned char res2;
-    unsigned char jobHeaderT2[6];
-    unsigned char prSum;
-}
-jobHeader =
-{
-    { 0x1B, 0x50, 0x01, 0x08, 0x00, 0xAF},
-    0x01, 0x00,
-    { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-    0x00
 };
 
 struct
@@ -685,12 +682,9 @@ void
 writeJobHeader (void)
 {
     struct block_begin begin = { .model = model, .color = 0x10 };
+    struct block_params params = { .res_y = res_y, .res_x = res_x };
     write_block(M2X00W_BLOCK_BEGIN, &begin, sizeof(begin), out_stream);
-
-    jobHeader.prSum = checksum(&jobHeader, sizeof(jobHeader) - 1);
-
-    fwrite(&jobHeader, 1, sizeof(jobHeader), out_stream);
-    headerCount++;
+    write_block(M2X00W_BLOCK_PARAMS, &params, sizeof(params), out_stream);
     DBG(1, "JobHeader written.\n");
 }
 
@@ -1088,7 +1082,7 @@ main (int argc, char *argv[])
         model = M2400W;
         form = form_2400;
         encode = prepDoEncode;
-        jobHeader.res2 = 0x01;
+        res_x = RES_MULT2;
         page_header.colorMode = 0x80;
         page_header.seitenHeaderT7[1] = 0x00;
         blockHeader.linesPerBlock1 = 0x50;
@@ -1142,19 +1136,18 @@ main (int argc, char *argv[])
 	    ResXmul = atoi (optarg);
 	    if (ResXmul == 1) {
 		DBG(1, "Aufloesung 600dpi\n");
-		jobHeader.res1 = 0x01;
-		jobHeader.res2 = 0x00;
+		res_y = RES_600DPI;
+		res_x = RES_MULT1;
 	    }
 	    else if (ResXmul == 2) {
 		DBG(1, "Aufloesung 1200dpi\n");
-		jobHeader.res1 = (model == M2300W) ? 0x02 : 0x01;
-		jobHeader.res2 = 0x01;
+		res_y = (model == M2300W) ? RES_1200DPI : RES_600DPI;
+		res_x = RES_MULT2;///// BUG?
 	    }
 	    else if (model == M2400W && ResXmul == 3) {
 		DBG(1, "Aufloesung 2400dpi\n");
-		jobHeader.res1 = 0x01;
-		jobHeader.res2 = 0x02;
-		ResXmul = 4;
+		res_y = RES_600DPI;
+		res_x = RES_MULT4;
 	    }
 	    else {
 		DBG(0, "Wrong Resolutin Mode !\n");
