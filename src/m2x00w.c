@@ -379,10 +379,6 @@ Help (void)
 	     "                        Please write as first Option \n"
 	     "                        More than 5 will be extrem !\n",
 	     verb);
-
-    exit (1);
-
-
 }
 
 unsigned char checksum(void *p, int length)
@@ -1100,8 +1096,9 @@ main (int argc, char *argv[])
     while ((option = getopt (argc, argv, "v:hi:o:c:m:p:r:s")) >= 0)
 	switch (option) {
 	case 'h':
+	case '?':
 	    Help ();
-	    return (0);
+	    return 0;
 	case 'i':
 	    inFile = optarg;
 	    break;
@@ -1173,13 +1170,10 @@ main (int argc, char *argv[])
 	case 's':
 	    saveToner = 1;
 	    break;
-	case '?':
-	    Help ();
-	    return (1);
 	}
     if (inFile == NULL || outFile == NULL) {
 	Help ();
-	return (1);
+	return 1;
     }
 /* 2. dateien oeffnen */
 
@@ -1289,6 +1283,5 @@ main (int argc, char *argv[])
 
     fclose (in_stream);
     fclose (out_stream);
-    return (0);
-
+    return 0;
 }
