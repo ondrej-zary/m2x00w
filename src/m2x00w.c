@@ -29,6 +29,9 @@
 FILE *in_stream, *out_stream;
 
 int verb = 0;			/* verbose level */
+
+#define DBG(level, fmt, args ...)	if (verb > level) fprintf(stderr, fmt, ##args);
+
 enum m2x00w_model { M2300W, M2400W };
 enum m2x00w_model model;
 int MediaCode = 0;
@@ -423,20 +426,15 @@ encodeToBlockBuffer (int colorID)
     unsigned char rleOut[2];
     int rle64, rle1;
 
-    if (verb > 5)
-	fprintf (stderr,
-		 "--> Ausgabe von %.3i Bytes fuer colorID %i davon %.3i Rohbytes und %.3i mal %.2x RLE encoded am Ende.\n",
-		 (int) stFeld[colorID].indexEncBuffer, (int) colorID,
-		 (int) rohBytes, (int) stFeld[colorID].rleCount,
-		 stFeld[colorID].lastByte);
+    DBG(5, "--> Ausgabe von %.3i Bytes fuer colorID %i davon %.3i Rohbytes und %.3i mal %.2x RLE encoded am Ende.\n",
+	(int) stFeld[colorID].indexEncBuffer, (int) colorID, (int) rohBytes, (int) stFeld[colorID].rleCount, stFeld[colorID].lastByte);
     if (verb > 5)
 	hex_dump("Daten fuer Encoder:\n", stFeld[colorID].encBuffer, stFeld[colorID].indexEncBuffer);
     /* rohbytes verarbeiten */
     /* 64er stufe */
     while ((rohBytes - (rohByteCount * 64)) >= 64) {
 	unsigned char rBOut[65];
-	if (verb > 5)
-	    fprintf (stderr, "Segment mit 64 Bytes ausgeben ...");
+	DBG(5, "Segment mit 64 Bytes ausgeben ...");
 	/* header belegen (standardwert) */
 	rBOut[0] = (char) (64 - 1);
 	memcpy (&rBOut[1], &stFeld[colorID].encBuffer[(rohByteCount * 64)],
@@ -445,8 +443,7 @@ encodeToBlockBuffer (int colorID)
 		blockBuffer[stFeld[colorID].indexBlockBuffer], &rBOut[0], 65);
 	stFeld[colorID].indexBlockBuffer += 65;
 	rohByteCount++;
-	if (verb > 5)
-	    fprintf (stderr, "OK\n");
+	DBG(5, "OK\n");
 
 	if (verb > 5)
 	    hex_dump("Rohbytes:\n", rBOut, 65);
@@ -457,9 +454,7 @@ encodeToBlockBuffer (int colorID)
 	unsigned char *rBOut = malloc(rohBytes - (64 * rohByteCount) + 1);
 
 	/* einzelstufe */
-	if (verb > 5)
-	    fprintf (stderr, "Segment mit %i Bytes ausgeben ...",
-		     (int) (rohBytes - (64 * rohByteCount)));
+	DBG(5, "Segment mit %i Bytes ausgeben ...", (int) (rohBytes - (64 * rohByteCount)));
 
 	/* header belegen */
 	rBOut[0] = (char) ((rohBytes - (64 * rohByteCount)) - 1);
@@ -470,8 +465,7 @@ encodeToBlockBuffer (int colorID)
 		(rohBytes + 1 - (64 * rohByteCount)));
 	stFeld[colorID].indexBlockBuffer +=
 	    (rohBytes - (64 * rohByteCount) + 1);
-	if (verb > 5)
-	    fprintf (stderr, "OK\n");
+	DBG(5, "OK\n");
 
 	if (verb > 5)
 	    hex_dump("Rohbytes:\n", rBOut, rohBytes - (64 * rohByteCount));
@@ -492,10 +486,7 @@ encodeToBlockBuffer (int colorID)
 	    memcpy (&stFeld[colorID].
 		    blockBuffer[stFeld[colorID].indexBlockBuffer], &rleOut[0], 2);
 	    stFeld[colorID].indexBlockBuffer += 2;
-	    if (verb > 5)
-	        fprintf (stderr,
-		         "---->64er RLE Encoding: 2048 mal %.2x - codiert als: %.2x%.2x\n",
-		         rleOut[1], rleOut[0], rleOut[1]);
+	    DBG(5, "---->64er RLE Encoding: 2048 mal %.2x - codiert als: %.2x%.2x\n", rleOut[1], rleOut[0], rleOut[1]);
 	    if (verb > 5)
 		hex_dump("64er RLE::\n", rleOut, 2);
 	}
@@ -509,10 +500,7 @@ encodeToBlockBuffer (int colorID)
 		blockBuffer[stFeld[colorID].indexBlockBuffer], &rleOut[0], 2);
 	stFeld[colorID].indexBlockBuffer += 2;
 
-	if (verb > 5)
-	    fprintf (stderr,
-		     "---->64er RLE Encoding: %i mal %.2x - codiert als: %.2x%.2x\n",
-		     rle64, rleOut[1], rleOut[0], rleOut[1]);
+	DBG(5, "---->64er RLE Encoding: %i mal %.2x - codiert als: %.2x%.2x\n", rle64, rleOut[1], rleOut[0], rleOut[1]);
 	if (verb > 5)
 	    hex_dump("64er RLE::\n", rleOut, 2);
     }
@@ -522,18 +510,13 @@ encodeToBlockBuffer (int colorID)
 	memcpy (&stFeld[colorID].
 		blockBuffer[stFeld[colorID].indexBlockBuffer], &rleOut[0], 2);
 	stFeld[colorID].indexBlockBuffer += 2;
-	if (verb > 5)
-	    fprintf (stderr,
-		     "---->1er RLE Encoding: %i mal %.2x - codiert als: %.2x%.2x\n",
-		     rle1, rleOut[1], rleOut[0], rleOut[1]);
-
+	DBG(5, "---->1er RLE Encoding: %i mal %.2x - codiert als: %.2x%.2x\n", rle1, rleOut[1], rleOut[0], rleOut[1]);
 	if (verb > 5)
 	    hex_dump(" 1er RLE::\n", rleOut, 2);
     }
 
 
-    if (verb > 5)
-	fprintf (stderr, "--->RLE Encode for %i done.\n", colorID);
+    DBG(5, "--->RLE Encode for %i done.\n", colorID);
     stFeld[colorID].indexEncBuffer = 0;
 }
 
@@ -545,9 +528,7 @@ doEncode (int inByte, int colorID)
 	stFeld[colorID].linesOut++;
 	/* jede Zeile beginnt mit einer Tabelle */
 	/* die tabellenkompression wurde vorerst weggelassen deshalb eine leere tabelle */
-	if (verb > 5)
-	    fprintf (stderr, "Dummy Tabelle fuer neue Zeile %3i ausgeben .\n",
-		     stFeld[colorID].linesOut);
+	DBG(5, "Dummy Tabelle fuer neue Zeile %3i ausgeben .\n", stFeld[colorID].linesOut);
 	memcpy (&stFeld[colorID].
 		blockBuffer[stFeld[colorID].indexBlockBuffer], &dummyTable[0],
 		1);
@@ -604,11 +585,8 @@ doEncode (int inByte, int colorID)
 	/* dies kann erst jetzt geschehen, da die anzahl der im block befindlichen bytes im header steht */
 	if (stFeld[colorID].linesOut >= (linesPerBlock / (model == M2400W ? 2 : 1))) {
 	    stFeld[colorID].blocksOut++;
-	    if (verb > 4)
-		fprintf (stderr,
-			 "Blockheader fuer Block %i mit %5i Bytes generieren und Block raus kopieren...\n",
-			 (int) stFeld[colorID].blocksOut,
-			 (int) stFeld[colorID].indexBlockBuffer);
+	    DBG(4, "Blockheader fuer Block %i mit %5i Bytes generieren und Block raus kopieren...\n",
+			 (int) stFeld[colorID].blocksOut, (int) stFeld[colorID].indexBlockBuffer);
 	    blockHeader.blockLength1 =
 		(char) stFeld[colorID].indexBlockBuffer;
 	    blockHeader.blockLength2 =
@@ -630,10 +608,7 @@ doEncode (int inByte, int colorID)
 		    siteInitHeaderCount + stFeld[colorID].blocksOut - 1;
 	    }
 	    headerCount++;
-	    if (verb > 4)
-		fprintf (stderr,
-			 "BlockHeader.headerCount fuer colorID %i ist %i\n",
-			 colorID, blockHeader.headerCount);
+	    DBG(4, "BlockHeader.headerCount fuer colorID %i ist %i\n", colorID, blockHeader.headerCount);
 	    blockHeader.blockCount = stFeld[colorID].blocksOut;
 	    blockHeader.tonerColor = colorID;
 
@@ -702,8 +677,7 @@ writeJobHeader (void)
 
     fwrite(&jobHeader, 1, sizeof(jobHeader), out_stream);
     headerCount++;
-    if (verb > 1)
-	fprintf (stderr, "JobHeader written.\n");
+    DBG(1, "JobHeader written.\n");
 }
 
 void
@@ -760,15 +734,11 @@ readPkmraw (void)
 	int trailLines, trailPixBytes;
 	int xAdd, yAdd;
 
-	if (verb > 2) {
-	    fprintf (stderr, "gelesener Header: %s", buffer);
-	}
+	DBG(2, "gelesener Header: %s", buffer);
 
 	/* grobe prueffung - geht eigentlich besser */
 	if (buffer[0] != 'P' || buffer[1] != '4') {
-	    if (verb > 0) {
-		fprintf (stderr, "Erwartet 'P4' but found >%s<\n", buffer);
-	    }
+	    DBG(0, "Erwartet 'P4' but found >%s<\n", buffer);
 	    exit (1);
 	}
 
@@ -777,8 +747,7 @@ readPkmraw (void)
 	/* bei sw ist es 8, also nur eine farbseite */
 	if (ccs >= (blocksPerPage / 8)) {
 	    writePageHeader ();
-	    if (verb > 1)
-		fprintf (stderr, "###Seitenheader geschrieben\n");
+	    DBG(1, "###Seitenheader geschrieben\n");
 
 	    if (thisPageColorMode == 0xf0) {
 		fwrite(stFeld[3].pageOut, 1, stFeld[3].indexPageOut, out_stream);
@@ -792,19 +761,13 @@ readPkmraw (void)
 	    clearBuffer (0);
 
 	    ccs = 0;
-	    if (verb > 1)
-		fprintf (stderr, "###Seiteninhalt geschrieben\n");
-	    if (verb > 1)
-		fprintf (stderr, "Farbverteilung der Seite:\n"
-		"Yellow:  %8d\n"
-		"Magenta: %8d\n"
-		"Cyan:    %8d\n"
-		"Black:   %8d\n"
-		, pix[0][0],pix[1][0],pix[2][0],pix[3][0]);
-	        pix[0][0]=0;
-	        pix[1][0]=0;
-	        pix[2][0]=0;
-	        pix[3][0]=0;
+	    DBG(1, "###Seiteninhalt geschrieben\n");
+	    DBG(1, "Farbverteilung der Seite:\nYellow:  %8d\nMagenta: %8d\nCyan:    %8d\nBlack:   %8d\n",
+		pix[0][0],pix[1][0],pix[2][0],pix[3][0]);
+	    pix[0][0]=0;
+	    pix[1][0]=0;
+	    pix[2][0]=0;
+	    pix[3][0]=0;
 
 
 
@@ -819,17 +782,14 @@ readPkmraw (void)
 	    siteInitHeaderCount = headerCount;
 	    thisPageColorMode=colorMode;
 	    thisPageBlocksPerPage=blocksPerPage;
-	    if (verb > 1)
-		fprintf (stderr, "Reservierter SeitenHeaderCount ist %2d\n", reservedHeaderCountSH );
+	    DBG(1, "Reservierter SeitenHeaderCount ist %2d\n", reservedHeaderCountSH );
 
 	}
-	if (verb > 1)
-	    fprintf (stderr, "Beginne neue Farbe\n");
+	DBG(1, "Beginne neue Farbe\n");
 	
 	if(ccs>2) {
 	    if(pix[0][0]==0 && pix[1][0]==0 && pix[2][0]==0) {
-		if (verb > 1)
-		    fprintf (stderr, "--------------- Switch to Black and White !\n");
+		DBG(1, "--------------- Switch to Black and White !\n");
 		
 		thisPageColorMode=(model == M2300W) ? 0x00 : 0x80;
 		thisPageBlocksPerPage=0x08;
@@ -839,8 +799,7 @@ readPkmraw (void)
 		clearBuffer (2);
 		clearBuffer (3);
 	    }else{
-		if (verb > 1)
-		    fprintf (stderr, "--------------- Seite bleibt in Farbe\n");
+		DBG(1, "--------------- Seite bleibt in Farbe\n");
 	    }
 		
 	}
@@ -849,12 +808,9 @@ readPkmraw (void)
 
 	for (readHeader = 0; readHeader < 1; readHeader++) {
 	    if (fgets (buffer, 256, in_stream) != NULL) {
-		if (verb > 3) {
-		    fprintf (stderr, "gelesener Header: %s", buffer);
-		}
+		DBG(3, "gelesener Header: %s", buffer);
 		if (buffer[0] == '#') {
-		    if (verb > 3)
-			fprintf (stderr, "Zeile ist ein Kommentar und zaehlt nicht mit.\n");	/* diese Ausage muss noch geprueft werden ! */
+		    DBG(3, "Zeile ist ein Kommentar und zaehlt nicht mit.\n");	/* diese Ausage muss noch geprueft werden ! */
 		    readHeader--;
 		}
 		else {
@@ -867,9 +823,7 @@ readPkmraw (void)
 		}
 	    }
 	    else {
-		if (verb > 0) {
-		    fprintf (stderr, "Unexpected end of in-file !?\n");
-		}
+		DBG(0, "Unexpected end of in-file !?\n");
 		exit (1);
 	    }
 	}
@@ -896,10 +850,8 @@ readPkmraw (void)
 	    trailPixBytes =
 		(int) floor (((double) inpXBytes - ((double) resBreite / 8)) /
 			     2);
-	    if (verb > 5)
-		fprintf (stderr,
-			 "Eingabeseite zu breit - clippe auf %i mit %i am Anfang und %i am Ende.\n",
-			 realPixBytes, leadPixBytes, trailPixBytes);
+	    DBG(5, "Eingabeseite zu breit - clippe auf %i mit %i am Anfang und %i am Ende.\n",
+		realPixBytes, leadPixBytes, trailPixBytes);
 	}
 	else {			/* hinzufuegen */
 	    realPixBytes = inpXBytes;
@@ -910,10 +862,8 @@ readPkmraw (void)
 		(int) floor ((((double) resBreite / 8) - (double) inpXBytes) /
 			     2);
 	    xAdd = 1;
-	    if (verb > 5)
-		fprintf (stderr,
-			 "Eingabeseite zu schmal - addiere auf %i -> %i am Anfang und %i am Ende.\n",
-			 realPixBytes, leadPixBytes, trailPixBytes);
+	    DBG(5, "Eingabeseite zu schmal - addiere auf %i -> %i am Anfang und %i am Ende.\n",
+		realPixBytes, leadPixBytes, trailPixBytes);
 	}
 
 	if (resHoehe <= inpY) {	/* eingabe hoeher als druckbereich - clippen */
@@ -922,10 +872,8 @@ readPkmraw (void)
 		(int) ceil ((((double) inpY - (double) resHoehe) / 2));
 	    trailLines =
 		(int) floor ((((double) inpY - (double) resHoehe) / 2));
-	    if (verb > 5)
-		fprintf (stderr,
-			 "Eingabeseite zu lang - clippe auf %i mit %i am Anfang und %i am Ende.\n",
-			 realLines, leadLines, trailLines);
+	    DBG(5, "Eingabeseite zu lang - clippe auf %i mit %i am Anfang und %i am Ende.\n",
+		realLines, leadLines, trailLines);
 	}
 	else {			/* hinzufuegen */
 	    realLines = inpY;
@@ -934,26 +882,19 @@ readPkmraw (void)
 	    trailLines =
 		(int) floor ((((double) resHoehe - (double) inpY) / 2));
 	    yAdd = 1;
-	    if (verb > 5)
-		fprintf (stderr,
-			 "Eingabeseite zu kurz - addiere auf %i -> %i am Anfang und %i am Ende.\n",
-			 realLines, leadLines, trailLines);
+	    DBG(5, "Eingabeseite zu kurz - addiere auf %i -> %i am Anfang und %i am Ende.\n",
+		realLines, leadLines, trailLines);
 	}
 
 	if (yAdd == 0) {
-	    if (verb > 5)
-		fprintf (stderr,
-			 "ueberlese %i zeilen mit je %i bytes am Anfang\n",
-			 leadLines, inpXBytes);
+	    DBG(5, "ueberlese %i zeilen mit je %i bytes am Anfang\n", leadLines, inpXBytes);
 	    for (shz = 0; shz < leadLines; shz++) {	/* vorschleife fuer  zu ueberlesende hohenzeilen */
 		for (sbz = 0; sbz < inpXBytes; sbz++) {
 		    if ((c = fgetc (in_stream)) != EOF) {
 			/* verwerfe das byte */
 		    }
 		    else {
-			if (verb > 0) {
-			    fprintf (stderr, "\nUps, unerwartetes Ende\n");
-			}
+			DBG(0, "\nUps, unerwartetes Ende\n");
 			exit (1);
 		    }
 		}
@@ -961,10 +902,7 @@ readPkmraw (void)
 
 	}
 	else {
-	    if (verb > 5)
-		fprintf (stderr,
-			 "erzeuge %i zeilen mit je %i bytes (0x00) am Anfang\n",
-			 leadLines, (resBreite / 8));
+	    DBG(5, "erzeuge %i zeilen mit je %i bytes (0x00) am Anfang\n", leadLines, (resBreite / 8));
 	    for (shz = 0; shz < leadLines; shz++) {	/* vorschleife fuer fehlende hohenzeilen */
 		for (sbz = 0; sbz < (resBreite / 8); sbz++) {
 		    if (colorMode == 0xf0) {
@@ -985,26 +923,19 @@ readPkmraw (void)
 
 	for (shz = 0; shz < realLines; shz++) {
 	    if (xAdd == 0) {
-		if (verb > 5)
-		    fprintf (stderr,
-			     "ueberlese %i bytes der Zeile am Anfang\n",
-			     leadPixBytes);
+		DBG(5, "ueberlese %i bytes der Zeile am Anfang\n", leadPixBytes);
 		for (sbz = 0; sbz < leadPixBytes; sbz++) {	/* vorschleife fuer zu ueberlesende breiten pixel */
 		    if ((c = fgetc (in_stream)) != EOF) {
 			/* verwerfe das byte */
 		    }
 		    else {
-			if (verb > 0) {
-			    fprintf (stderr, "\nUps, unexpected End\n");
-			}
+			DBG(0, "\nUps, unexpected End\n");
 			exit (1);
 		    }
 		}
 	    }
 	    else {
-		if (verb > 5)
-		    fprintf (stderr, "erzeuge %i bytes mit 0x00 am Anfang\n",
-			     leadPixBytes);
+		DBG(5, "erzeuge %i bytes mit 0x00 am Anfang\n", leadPixBytes);
 		for (sbz = 0; sbz < leadPixBytes; sbz++) {
 		    if (colorMode == 0xf0) {
 		        if (model == M2300W)
@@ -1022,19 +953,13 @@ readPkmraw (void)
 
 	    }
 
-	    if (verb > 5)
-		fprintf (stderr, "verabreite normal %i bytes\n",
-			 realPixBytes);
+	    DBG(5, "verabreite normal %i bytes\n", realPixBytes);
 	    for (sbz = 0; sbz < realPixBytes; sbz++) {
 		if ((c = fgetc (in_stream)) != EOF) {
 		    if ((sbz + 1) == realPixBytes) {
-			if (verb > 6)
-			    fprintf (stderr,
-				     "letzes Byte maskieren mit %.2x - aus %.2x wird ",
-				     lastByteMask, c);
+			DBG(6, "letzes Byte maskieren mit %.2x - aus %.2x wird ", lastByteMask, c);
 			c = c & lastByteMask;	/* das letzte byte muss bei ungeraden und zu kleinen eingaben maskiert werden */
-			if (verb > 6)
-			    fprintf (stderr, "%.2x\n", c);
+			DBG(6, "%.2x\n", c);
 		    }
 		    if (colorMode == 0xf0) {
 			/* hier die pixel zaehlen um s/w seiten zu erkennen */
@@ -1067,34 +992,26 @@ readPkmraw (void)
 		    }
 		}
 		else {
-		    if (verb > 0) {
-			fprintf (stderr, "\nUps, unexpected End\n");
-		    }
+		    DBG(0, "\nUps, unexpected End\n");
 		    exit (1);
 		}
 
 	    }
 
 	    if (xAdd == 0) {
-		if (verb > 5)
-		    fprintf (stderr, "ueberlese %i bytes der Zeile am Ende\n",
-			     trailPixBytes);
+		DBG(5, "ueberlese %i bytes der Zeile am Ende\n", trailPixBytes);
 		for (sbz = 0; sbz < trailPixBytes; sbz++) {	/* vorschleife fuer zu ueberlesende breiten pixel */
 		    if ((c = fgetc (in_stream)) != EOF) {
 			/* verwerfe das byte */
 		    }
 		    else {
-			if (verb > 5) {
-			    fprintf (stderr, "\nUps, unexpected End\n");
-			}
+			DBG(5, "\nUps, unexpected End\n");
 			exit (1);
 		    }
 		}
 	    }
 	    else {
-		if (verb > 5)
-		    fprintf (stderr, "erzeuge %i bytes mit 0x00 am Ende\n",
-			     trailPixBytes);
+		DBG(5, "erzeuge %i bytes mit 0x00 am Ende\n", trailPixBytes);
 		for (sbz = 0; sbz < trailPixBytes; sbz++) {
 		    if (colorMode == 0xf0) {
 		        if (model == M2300W)
@@ -1115,19 +1032,14 @@ readPkmraw (void)
 	}
 
 	if (yAdd == 0) {
-	    if (verb > 5)
-		fprintf (stderr,
-			 "ueberlese %i zeilen mit je %i bytes am Ende\n",
-			 trailLines, inpXBytes);
+	    DBG(5, "ueberlese %i zeilen mit je %i bytes am Ende\n", trailLines, inpXBytes);
 	    for (shz = 0; shz < trailLines; shz++) {	/* endschleife fuer  zu ueberlesende hohenzeilen */
 		for (sbz = 0; sbz < inpXBytes; sbz++) {
 		    if ((c = fgetc (in_stream)) != EOF) {
 			/* verwerfe das byte */
 		    }
 		    else {
-			if (verb > 0) {
-			    fprintf (stderr, "\nUps, unexpected End\n");
-			}
+			DBG(0, "\nUps, unexpected End\n");
 			exit (1);
 		    }
 		}
@@ -1135,10 +1047,7 @@ readPkmraw (void)
 
 	}
 	else {
-	    if (verb > 5)
-		fprintf (stderr,
-			 "erzeuge %i zeilen mit je %i bytes (0x00) am Ende\n",
-			 trailLines, (resBreite / 8));
+	    DBG(5, "erzeuge %i zeilen mit je %i bytes (0x00) am Ende\n", trailLines, (resBreite / 8));
 	    for (shz = 0; shz < trailLines; shz++) {	/* endschleife fuer fehlende hohenzeilen */
 		for (sbz = 0; sbz < (resBreite / 8); sbz++) {
 		    if (colorMode == 0xf0) {
@@ -1161,8 +1070,7 @@ readPkmraw (void)
 	ccs++;
     }
     writePageHeader ();
-    if (verb > 1)
-	fprintf (stderr, "###Seitenheader geschrieben\n");
+    DBG(1, "###Seitenheader geschrieben\n");
 
     if (thisPageColorMode == 0xf0) {
 	fwrite(stFeld[3].pageOut, 1, stFeld[3].indexPageOut, out_stream);
@@ -1170,16 +1078,10 @@ readPkmraw (void)
 	fwrite(stFeld[1].pageOut, 1, stFeld[1].indexPageOut, out_stream);
     }
     fwrite(stFeld[0].pageOut, 1, stFeld[0].indexPageOut, out_stream);
-    if (verb > 1)
-	fprintf (stderr, "###Seiteninhalt geschrieben\n");
+    DBG(1, "###Seiteninhalt geschrieben\n");
 
-    if (verb > 1)
-	fprintf (stderr, "Farbverteilung der Seite:\n"
-	"Yellow:  %8d\n"
-	"Magenta: %8d\n"
-	"Cyan:    %8d\n"
-	"Black:   %8d\n"
-	, pix[0][0],pix[1][0],pix[2][0],pix[3][0]);
+    DBG(1, "Farbverteilung der Seite:\nYellow:  %8d\nMagenta: %8d\nCyan:    %8d\nBlack:   %8d\n",
+	pix[0][0],pix[1][0],pix[2][0],pix[3][0]);
 
     pix[0][0]=0;
     pix[1][0]=0;
@@ -1242,51 +1144,44 @@ main (int argc, char *argv[])
 		colorMode = 0xf0;
 	    }
 	    else {
-		if (verb > 0)
-		    fprintf (stderr, "Wrong color Mode %s\n", optarg);
+		DBG(0, "Wrong color Mode %s\n", optarg);
 		exit (1);
 	    }
 	    break;
 	case 'm':
 	    MediaCode = atoi (optarg);
 	    if (MediaCode > 6) {
-		if (verb > 0)
-		    fprintf (stderr, "Wrong Media Code %d\n", MediaCode);
+		DBG(0, "Wrong Media Code %d\n", MediaCode);
 		exit (1);
 	    }
 	    break;
 	case 'p':
 	    PaperCode = atoi (optarg);
 	    if (PaperCode > 41 || form[PaperCode].resX == 0) {
-		if (verb > 0)
-		    fprintf (stderr, "Wrong Paper Code %d\n", PaperCode);
+		DBG(0, "Wrong Paper Code %d\n", PaperCode);
 		exit (1);
 	    }
 	    break;
 	case 'r':
 	    ResXmul = atoi (optarg);
 	    if (ResXmul == 1) {
-		if (verb > 1)
-		    fprintf (stderr, "Aufloesung 600dpi\n");
+		DBG(1, "Aufloesung 600dpi\n");
 		jobHeader.res1 = 0x01;
 		jobHeader.res2 = 0x00;
 	    }
 	    else if (ResXmul == 2) {
-		if (verb > 1)
-		    fprintf (stderr, "Aufloesung 1200dpi\n");
+		DBG(1, "Aufloesung 1200dpi\n");
 		jobHeader.res1 = (model == M2300W) ? 0x02 : 0x01;
 		jobHeader.res2 = 0x01;
 	    }
 	    else if (model == M2400W && ResXmul == 3) {
-		if (verb > 1)
-		    fprintf (stderr, "Aufloesung 2400dpi\n");
+		DBG(1, "Aufloesung 2400dpi\n");
 		jobHeader.res1 = 0x01;
 		jobHeader.res2 = 0x02;
 		ResXmul = 4;
 	    }
 	    else {
-		if (verb > 0)
-		    fprintf (stderr, "Wrong Resolutin Mode !\n");
+		DBG(0, "Wrong Resolutin Mode !\n");
 		exit (1);
 	    }
 	    break;
@@ -1317,9 +1212,7 @@ main (int argc, char *argv[])
     }
     else {
 	if ((in_stream = fopen (inFile, "r")) == NULL) {
-	    if (verb > 0) {
-		printf ("Fehler beim oeffnen der Eingabedatei\n");
-	    }
+	    DBG(0, "Fehler beim oeffnen der Eingabedatei\n");
 	    perror ("");
 	    exit (1);
 	}
@@ -1329,9 +1222,7 @@ main (int argc, char *argv[])
     }
     else {
 	if ((out_stream = fopen (outFile, "w")) == NULL) {
-	    if (verb > 0) {
-		printf ("Fehler beim oeffnen der Zieldatei\n");
-	    }
+	    DBG(0, "Fehler beim oeffnen der Zieldatei\n");
 	    perror ("");
 	    exit (1);
 	}
@@ -1396,8 +1287,7 @@ main (int argc, char *argv[])
 	fileFooter.headerCount = headerCount++;
 	fileFooter.prSum = checksum(&fileFooter, sizeof(fileFooter) - 1);
 	fwrite(&fileFooter, 1, sizeof(fileFooter), out_stream);
-	if (verb > 1)
-	    fprintf (stderr, "JobFooter written.\n");
+	DBG(1, "JobFooter written.\n");
     }
 
     if (colorMode == 0xf0) {
