@@ -399,17 +399,19 @@ unsigned char checksum(void *p, int length)
     return sum;
 }
 
-void hex_dump(char *title, void *p, int length)
+void hex_dump(int level, char *title, void *p, int length)
 {
     int i;
     unsigned char *data = p;
 
-    fprintf (stderr, "%s", title);
-    for (i = 0; i < length; i++) {
-        fprintf (stderr, " %.2hhx", *data);
-        data++;
+    if (verb > level) {
+	    fprintf (stderr, "%s", title);
+	    for (i = 0; i < length; i++) {
+	        fprintf (stderr, " %.2hhx", *data);
+	        data++;
+	    }
+	    fprintf (stderr, "\n");
     }
-    fprintf (stderr, "\n");
 }
 
 void
@@ -423,8 +425,7 @@ encodeToBlockBuffer (int colorID)
 
     DBG(5, "--> Ausgabe von %.3i Bytes fuer colorID %i davon %.3i Rohbytes und %.3i mal %.2x RLE encoded am Ende.\n",
 	(int) stFeld[colorID].indexEncBuffer, (int) colorID, (int) rohBytes, (int) stFeld[colorID].rleCount, stFeld[colorID].lastByte);
-    if (verb > 5)
-	hex_dump("Daten fuer Encoder:\n", stFeld[colorID].encBuffer, stFeld[colorID].indexEncBuffer);
+    hex_dump(5, "Daten fuer Encoder:\n", stFeld[colorID].encBuffer, stFeld[colorID].indexEncBuffer);
     /* rohbytes verarbeiten */
     /* 64er stufe */
     while ((rohBytes - (rohByteCount * 64)) >= 64) {
@@ -439,9 +440,7 @@ encodeToBlockBuffer (int colorID)
 	stFeld[colorID].indexBlockBuffer += 65;
 	rohByteCount++;
 	DBG(5, "OK\n");
-
-	if (verb > 5)
-	    hex_dump("Rohbytes:\n", rBOut, 65);
+	hex_dump(5, "Rohbytes:\n", rBOut, 65);
     }
     if ((rohBytes - (rohByteCount * 64)) > 0) {
 	/* XXX */
@@ -461,9 +460,7 @@ encodeToBlockBuffer (int colorID)
 	stFeld[colorID].indexBlockBuffer +=
 	    (rohBytes - (64 * rohByteCount) + 1);
 	DBG(5, "OK\n");
-
-	if (verb > 5)
-	    hex_dump("Rohbytes:\n", rBOut, rohBytes - (64 * rohByteCount));
+	hex_dump(5, "Rohbytes:\n", rBOut, rohBytes - (64 * rohByteCount));
 
 	/* XXX */
 	free(rBOut);
@@ -482,8 +479,7 @@ encodeToBlockBuffer (int colorID)
 		    blockBuffer[stFeld[colorID].indexBlockBuffer], &rleOut[0], 2);
 	    stFeld[colorID].indexBlockBuffer += 2;
 	    DBG(5, "---->64er RLE Encoding: 2048 mal %.2x - codiert als: %.2x%.2x\n", rleOut[1], rleOut[0], rleOut[1]);
-	    if (verb > 5)
-		hex_dump("64er RLE::\n", rleOut, 2);
+	    hex_dump(5, "64er RLE::\n", rleOut, 2);
 	}
     	rle64 -= 64;
     }
@@ -496,8 +492,7 @@ encodeToBlockBuffer (int colorID)
 	stFeld[colorID].indexBlockBuffer += 2;
 
 	DBG(5, "---->64er RLE Encoding: %i mal %.2x - codiert als: %.2x%.2x\n", rle64, rleOut[1], rleOut[0], rleOut[1]);
-	if (verb > 5)
-	    hex_dump("64er RLE::\n", rleOut, 2);
+	hex_dump(5, "64er RLE::\n", rleOut, 2);
     }
     if (rle1 > 0) {
 	rleOut[0] = 128 + rle1;
@@ -506,8 +501,7 @@ encodeToBlockBuffer (int colorID)
 		blockBuffer[stFeld[colorID].indexBlockBuffer], &rleOut[0], 2);
 	stFeld[colorID].indexBlockBuffer += 2;
 	DBG(5, "---->1er RLE Encoding: %i mal %.2x - codiert als: %.2x%.2x\n", rle1, rleOut[1], rleOut[0], rleOut[1]);
-	if (verb > 5)
-	    hex_dump(" 1er RLE::\n", rleOut, 2);
+	hex_dump(5, " 1er RLE::\n", rleOut, 2);
     }
 
 
@@ -602,8 +596,7 @@ doEncode (int inByte, int colorID)
 		    &blockHeader, sizeof(blockHeader));
 	    stFeld[colorID].indexPageOut += sizeof(blockHeader);
 
-	    if (verb > 4)
-		hex_dump("Blockheader: ", &blockHeader, sizeof(blockHeader));
+	    hex_dump(4, "Blockheader: ", &blockHeader, sizeof(blockHeader));
 
 	    memcpy (&stFeld[colorID].pageOut[stFeld[colorID].indexPageOut],
 		    &stFeld[colorID].blockBuffer[0],
@@ -683,8 +676,7 @@ writePageHeader (void)
     page_header.prSum = checksum(&page_header, sizeof(page_header) - 1);
     fwrite(&page_header, 1, sizeof(page_header), out_stream);
 
-    if (verb > 4)
-	hex_dump("Seitenheader: ", &page_header, sizeof(page_header));
+    hex_dump(4, "Seitenheader: ", &page_header, sizeof(page_header));
 }
 
 
