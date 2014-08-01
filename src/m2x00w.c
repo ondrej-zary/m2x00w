@@ -790,10 +790,10 @@ readPkmraw (void)
     unsigned short colorKey[4] = { 1, 2, 3, 0 };
 
     int readHeader;
-    char buffer[255];
+    char buffer[256];
 
 
-    while ((fgets (buffer, 256, in_stream)) != NULL) {
+    while ((fgets (buffer, sizeof(buffer), in_stream)) != NULL) {
 	int inpX = 0;
 	int inpY = 0;
 	int inpXBytes = 0;
