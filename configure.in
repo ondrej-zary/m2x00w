@@ -45,8 +45,6 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 
-AC_CHECK_LIB(m,floor)
-
 AC_PATH_PROG(GZIP,gzip,,[/usr/bin:/bin:/usr/local/bin:/opt/bin:$PATH])
 if test -z "$GZIP"; then
     echo "Could not locate gzip"

@@ -20,11 +20,12 @@
  */
 
 #include <stdio.h>
-#include <math.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <libgen.h>
+
+#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 
 #define cpu_to_le16(x) (x)
 #define cpu_to_le32(x) (x)
@@ -415,7 +416,7 @@ encodeToBlockBuffer (int colorID, struct steuerFelder *stFeld)
 
     /* rle verarbeiten */
 
-    rle64 = floor ((double) (stFeld->rleCount) / 64);
+    rle64 = stFeld->rleCount / 64;
     rle1 = (stFeld->rleCount) - (rle64 * 64);
 
     if (model == M2400W && rle64 > 63) {
@@ -725,7 +726,7 @@ readPkmraw (void)
 
 		    inpX = atoi (strtok (buffer, " "));
 		    inpY = atoi (strtok (NULL, " "));
-		    inpXBytes = (int) ceil ((double) inpX / 8);
+		    inpXBytes = DIV_ROUND_UP(inpX, 8);
 		    lastByteMask = 0xff << ((inpXBytes * 8) - inpX);
 		}
 	    }
@@ -751,23 +752,15 @@ readPkmraw (void)
 
 	if (resBreite <= inpX) {	/* eingabe brreiter als druckbereich - clippen */
 	    realPixBytes = (resBreite / 8);
-	    leadPixBytes =
-		(int) ceil (((double) inpXBytes - ((double) resBreite / 8)) /
-			    2);
-	    trailPixBytes =
-		(int) floor (((double) inpXBytes - ((double) resBreite / 8)) /
-			     2);
+	    leadPixBytes = DIV_ROUND_UP(inpXBytes - (resBreite / 8), 2);
+	    trailPixBytes = (inpXBytes - (resBreite / 8)) / 2;
 	    DBG(5, "Eingabeseite zu breit - clippe auf %i mit %i am Anfang und %i am Ende.\n",
 		realPixBytes, leadPixBytes, trailPixBytes);
 	}
 	else {			/* hinzufuegen */
 	    realPixBytes = inpXBytes;
-	    leadPixBytes =
-		(int) ceil ((((double) resBreite / 8) - (double) inpXBytes) /
-			    2);
-	    trailPixBytes =
-		(int) floor ((((double) resBreite / 8) - (double) inpXBytes) /
-			     2);
+	    leadPixBytes = DIV_ROUND_UP((resBreite / 8) - inpXBytes, 2);
+	    trailPixBytes = ((resBreite / 8) - inpXBytes) / 2;
 	    xAdd = 1;
 	    DBG(5, "Eingabeseite zu schmal - addiere auf %i -> %i am Anfang und %i am Ende.\n",
 		realPixBytes, leadPixBytes, trailPixBytes);
@@ -775,19 +768,15 @@ readPkmraw (void)
 
 	if (resHoehe <= inpY) {	/* eingabe hoeher als druckbereich - clippen */
 	    realLines = resHoehe;
-	    leadLines =
-		(int) ceil ((((double) inpY - (double) resHoehe) / 2));
-	    trailLines =
-		(int) floor ((((double) inpY - (double) resHoehe) / 2));
+	    leadLines = DIV_ROUND_UP(inpY - resHoehe, 2);
+	    trailLines = (inpY - resHoehe) / 2;
 	    DBG(5, "Eingabeseite zu lang - clippe auf %i mit %i am Anfang und %i am Ende.\n",
 		realLines, leadLines, trailLines);
 	}
 	else {			/* hinzufuegen */
 	    realLines = inpY;
-	    leadLines =
-		(int) ceil ((((double) resHoehe - (double) inpY) / 2));
-	    trailLines =
-		(int) floor ((((double) resHoehe - (double) inpY) / 2));
+	    leadLines = DIV_ROUND_UP(resHoehe - inpY, 2);
+	    trailLines = (resHoehe - inpY) / 2;
 	    yAdd = 1;
 	    DBG(5, "Eingabeseite zu kurz - addiere auf %i -> %i am Anfang und %i am Ende.\n",
 		realLines, leadLines, trailLines);
