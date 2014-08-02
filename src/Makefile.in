@@ -35,7 +35,7 @@ PROGS	= m2x00w m2300w-wrapper
 
 all: m2x00w
 
-m2x00w: m2x00w.c
+m2x00w: m2x00w.c m2x00w.h
 	$(CC) $(CFLAGS) -o m2x00w m2x00w.c $(LIBS)
 
 install: all $(PROGS)
